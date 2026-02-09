@@ -4,21 +4,46 @@ import { useReceiptStore } from '~/stores/receiptStore';
 import { useOcr } from '~/composables/useOcr';
 
 const receiptStore = useReceiptStore();
-const { isProcessing, progress, rawText, error, processImage, processText } = useOcr();
+const { isProcessing, progress, rawText, error, processImage, processPdf, processText } = useOcr();
 
 const parsedReceipt = ref<ReceiptInterface | null>(null);
 const manualInput = ref(false);
 const manualText = ref('');
+const fileQueue = ref<File[]>([]);
 
-async function onFileSelected(file: File): Promise<void> {
-    const reader = new FileReader();
-    reader.onload = async () => {
-        const result = await processImage(reader.result as string);
+function isPdfFile(file: File): boolean {
+    return file.type === 'application/pdf';
+}
+
+async function processFile(file: File): Promise<void> {
+    if (isPdfFile(file)) {
+        const result = await processPdf(file);
         if (result) {
             parsedReceipt.value = result;
         }
-    };
-    reader.readAsDataURL(file);
+    } else {
+        const reader = new FileReader();
+        reader.onload = async () => {
+            const result = await processImage(reader.result as string);
+            if (result) {
+                parsedReceipt.value = result;
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+async function onFilesSelected(files: File[]): Promise<void> {
+    fileQueue.value = files.slice(1);
+    await processFile(files[0]);
+}
+
+function processNextInQueue(): void {
+    if (fileQueue.value.length > 0) {
+        const nextFile = fileQueue.value[0];
+        fileQueue.value = fileQueue.value.slice(1);
+        processFile(nextFile);
+    }
 }
 
 function onManualProcess(): void {
@@ -31,11 +56,13 @@ function onSaveReceipt(): void {
         parsedReceipt.value = null;
         manualText.value = '';
         rawText.value = '';
+        processNextInQueue();
     }
 }
 
 function onCancel(): void {
     parsedReceipt.value = null;
+    processNextInQueue();
 }
 </script>
 
@@ -46,7 +73,7 @@ function onCancel(): void {
         </h1>
 
         <div v-if="!parsedReceipt">
-            <ReceiptDropZone @file-selected="onFileSelected" />
+            <ReceiptDropZone @files-selected="onFilesSelected" />
 
             <div
                 v-if="isProcessing"
@@ -60,6 +87,13 @@ function onCancel(): void {
                 class="error-message"
             >
                 {{ error }}
+            </div>
+
+            <div
+                v-if="fileQueue.length > 0"
+                class="queue-indicator"
+            >
+                Nog {{ fileQueue.length }} {{ fileQueue.length === 1 ? 'bestand' : 'bestanden' }} in wachtrij
             </div>
 
             <div class="manual-section">
@@ -91,6 +125,13 @@ function onCancel(): void {
             </div>
         </div>
 
+        <div
+            v-if="parsedReceipt && fileQueue.length > 0"
+            class="queue-indicator"
+        >
+            Nog {{ fileQueue.length }} {{ fileQueue.length === 1 ? 'bestand' : 'bestanden' }} in wachtrij
+        </div>
+
         <ReceiptReview
             v-if="parsedReceipt"
             v-model="parsedReceipt"
@@ -111,6 +152,10 @@ function onCancel(): void {
 
 .error-message {
     @apply mt-4 text-center text-red-600;
+}
+
+.queue-indicator {
+    @apply mt-3 text-center text-sm text-gray-500;
 }
 
 .manual-section {
