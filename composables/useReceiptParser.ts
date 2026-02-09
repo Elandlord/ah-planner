@@ -121,11 +121,43 @@ export function parseReceiptText(rawText: string): ReceiptItemInterface[] {
     const lines = rawText.split('\n').map((line) => line.trim()).filter(Boolean);
     const items: ReceiptItemInterface[] = [];
 
-    const pricePattern = /^(.+?)\s+(\d+[.,]\d{2})\s*$/;
+    const ahLinePattern =
+        /^(\d+)\s{2,}(.+?)\s{2,}(?:(\d+[.,]\d{2})\s{2,})?(\d+[.,]\d{2})\s*[BK]?\s*$/;
+
+    const depositPattern = /^\+?STATIEGELD\s+(\d+[.,]\d{2})\s*$/;
+
     const quantityPricePattern = /^(\d+)\s*[xX]\s*(.+?)\s+(\d+[.,]\d{2})\s*$/;
+    const pricePattern = /^(.+?)\s+(\d+[.,]\d{2})\s*$/;
 
     for (const line of lines) {
         if (isIgnoredLine(line)) {
+            continue;
+        }
+
+        const depositMatch = line.match(depositPattern);
+        if (depositMatch) {
+            items.push({
+                name: 'Statiegeld',
+                quantity: 1,
+                price: parsePrice(depositMatch[1]),
+                category: ProductCategoryEnum.overig,
+            });
+            continue;
+        }
+
+        const ahMatch = line.match(ahLinePattern);
+        if (ahMatch) {
+            const quantity = parseInt(ahMatch[1], 10);
+            const name = ahMatch[2].trim();
+            const unitPrice = ahMatch[3] ? parsePrice(ahMatch[3]) : null;
+            const totalPrice = parsePrice(ahMatch[4]);
+
+            items.push({
+                name,
+                quantity,
+                price: unitPrice ?? totalPrice,
+                category: categorizeProduct(name),
+            });
             continue;
         }
 
@@ -158,18 +190,57 @@ function isIgnoredLine(line: string): boolean {
     const ignoredPatterns = [
         /^albert\s*heijn/i,
         /^ah\s(?!.*\d+[.,]\d{2}\s*$)/i,
+        /^\d+\s+subtotaal/i,
         /^subtotaal/i,
         /^totaal/i,
         /^pin\s/i,
+        /^pinnen/i,
         /^betaald/i,
         /^datum/i,
         /^kassanr/i,
         /^bon\s*nr/i,
         /^btw/i,
+        /^bonus\s/i,
+        /^kras\s/i,
+        /^uw\s+voordeel/i,
+        /^waarvan/i,
+        /^bonus\s*box/i,
+        /^\d+\s+koopzegels/i,
+        /^koopzegels/i,
+        /^spaaracties/i,
+        /^\d+\s+espaar/i,
+        /^\d+\s+mijn\s+ah/i,
+        /^\d+\s+kraskaart/i,
+        /^aantal\s+omschrijving/i,
+        /^bonuskaart/i,
+        /^airmiles/i,
+        /^poi:/i,
+        /^klantticket/i,
+        /^merchant/i,
+        /^transactie/i,
+        /^par:/i,
+        /^maestro/i,
+        /^kaart\s/i,
+        /^betaling/i,
+        /^autorisatie/i,
+        /^contactless/i,
+        /^geverifieerd/i,
+        /^klantappar/i,
+        /^aat$/i,
+        /^vragen\s+over/i,
+        /^onze\s+collega/i,
+        /^helpen\s+je/i,
+        /^\d{4}$/,
         /^\d{2}[-.\/]\d{2}[-.\/]\d{2,4}/,
+        /^\d{2}:\d{2}\s+\d/,
+        /^\d+%\s/,
+        /^W\s+MAESTRO/i,
+        /^\d{4}\s+\d+\s+\d+$/,
         /^-+$/,
         /^=+$/,
         /^\*+$/,
+        /^[A-F0-9]{20,}/,
+        /^\(A\d+\)/,
     ];
     return ignoredPatterns.some((pattern) => pattern.test(line.trim()));
 }
@@ -180,26 +251,37 @@ function parsePrice(priceStr: string): number {
 
 export function extractTotal(rawText: string): number {
     const lines = rawText.split('\n');
+
     for (const line of lines) {
-        const totalMatch = line.match(/(?:totaal|subtotaal)\s+(\d+[.,]\d{2})/i);
+        const subtotalMatch = line.match(/\bSUBTOTAAL\s+(\d+[.,]\d{2})/i);
+        if (subtotalMatch) {
+            return parsePrice(subtotalMatch[1]);
+        }
+    }
+
+    for (const line of lines) {
+        const totalMatch = line.match(/\bTOTAAL\s+(\d+[.,]\d{2})/i);
         if (totalMatch) {
             return parsePrice(totalMatch[1]);
         }
     }
+
     return 0;
 }
 
 export function extractDate(rawText: string): string {
     const lines = rawText.split('\n');
+
     for (const line of lines) {
-        const dateMatch = line.match(/(\d{2})[-.\/](\d{2})[-.\/](\d{2,4})/);
+        const dateMatch = line.match(/(\d{1,2})[-.\/](\d{1,2})[-.\/](\d{2,4})/);
         if (dateMatch) {
-            const day = dateMatch[1];
-            const month = dateMatch[2];
+            const day = dateMatch[1].padStart(2, '0');
+            const month = dateMatch[2].padStart(2, '0');
             const year = dateMatch[3].length === 2 ? `20${dateMatch[3]}` : dateMatch[3];
             return `${year}-${month}-${day}`;
         }
     }
+
     return new Date().toISOString().split('T')[0];
 }
 
