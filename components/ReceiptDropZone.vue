@@ -1,29 +1,37 @@
 <script setup lang="ts">
 const emit = defineEmits<{
-    fileSelected: [file: File];
+    filesSelected: [files: File[]];
 }>();
 
 const isDragging = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
+function isValidFile(file: File): boolean {
+    return file.type.startsWith('image/') || file.type === 'application/pdf';
+}
+
 function onDrop(event: DragEvent): void {
     isDragging.value = false;
-    const file = event.dataTransfer?.files[0];
-    if (file && isImageFile(file)) {
-        emit('fileSelected', file);
+    const droppedFiles = event.dataTransfer?.files;
+    if (!droppedFiles?.length) {
+        return;
+    }
+
+    const validFiles = Array.from(droppedFiles).filter(isValidFile);
+    if (validFiles.length > 0) {
+        emit('filesSelected', validFiles);
     }
 }
 
 function onFileChange(event: Event): void {
     const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    if (file) {
-        emit('fileSelected', file);
+    const selectedFiles = target.files;
+    if (!selectedFiles?.length) {
+        return;
     }
-}
 
-function isImageFile(file: File): boolean {
-    return file.type.startsWith('image/');
+    emit('filesSelected', Array.from(selectedFiles));
+    target.value = '';
 }
 
 function openFilePicker(): void {
@@ -43,17 +51,17 @@ function openFilePicker(): void {
         <input
             ref="fileInput"
             type="file"
-            accept="image/*"
-            capture="environment"
+            accept="image/*,.pdf,application/pdf"
+            multiple
             class="file-input"
             @change="onFileChange"
         >
         <div class="drop-zone-content">
             <p class="drop-zone-title">
-                Sleep een foto van je bon hierheen
+                Sleep een foto of PDF van je bon hierheen
             </p>
             <p class="drop-zone-subtitle">
-                of klik om een foto te maken / selecteren
+                of klik om bestanden te selecteren
             </p>
         </div>
     </div>
