@@ -157,7 +157,7 @@ export function parseReceiptText(rawText: string): ReceiptItemInterface[] {
 function isIgnoredLine(line: string): boolean {
     const ignoredPatterns = [
         /^albert\s*heijn/i,
-        /^ah\s/i,
+        /^ah\s(?!.*\d+[.,]\d{2}\s*$)/i,
         /^subtotaal/i,
         /^totaal/i,
         /^pin\s/i,
