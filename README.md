@@ -1,75 +1,58 @@
-# Nuxt Minimal Starter
+# AH Planner
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+Albert Heijn receipt scanner & meal planner. Upload your AH receipts, get them parsed
+automatically, match ingredients against recipes, generate shopping lists, and track your
+spending over time.
+
+## Features
+
+- **Receipt OCR & parsing** (`pages/receipts.vue`) — upload a photo or PDF of an AH receipt,
+  extract line items via OCR/PDF parsing, review and edit them, then filter and export by week,
+  month, or selection (CSV/JSON).
+- **Recipe-to-pantry matching** (`pages/recipes.vue`) — browse recipes, see which ones match what
+  you already have, save favorites, and assign recipes to a weekly meal plan.
+- **Shopping list generation** (`pages/shopping-list.vue`) — auto-generated and manually editable
+  shopping list, grouped by product category.
+- **Spending overview** (`pages/spending.vue`) — charts and stats on total spend and most
+  frequently bought items, derived from your scanned receipts.
 
 ## Setup
 
-Make sure to install dependencies:
+Install dependencies:
 
 ```bash
-# npm
 npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
 ```
-
-## Development Server
 
 Start the development server on `http://localhost:3000`:
 
 ```bash
-# npm
 npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
+## Testing
 
-Build the application for production:
+Run the test suite once:
 
 ```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
+npm run test
 ```
 
-Locally preview production build:
+Run tests in watch mode:
 
 ```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
+npm run test:watch
 ```
 
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+Tests live in `tests/unit/`.
+
+## Project structure
+
+- `composables/` — receipt OCR, PDF parsing, receipt parsing, export, and recipe-matching logic
+- `stores/` — Pinia stores: `receiptStore`, `recipeStore`, `shoppingListStore`
+- `components/` — UI components (receipt drop zone, receipt review, recipe cards, spending chart)
+- `data/recipes.ts` — recipe data used for pantry matching
+
+---
+
+Built with [Nuxt](https://nuxt.com/docs/getting-started/introduction).
