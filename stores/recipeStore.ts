@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import type RecipeInterface from '~/types/RecipeInterface';
+import { rankRecipes } from '~/composables/useRecipeMatch';
 import { useReceiptStore } from '~/stores/receiptStore';
 import { recipes } from '~/data/recipes';
 
@@ -20,27 +21,7 @@ export const useRecipeStore = defineStore('recipe', {
 
         suggestedRecipes(): RecipeInterface[] {
             const receiptStore = useReceiptStore();
-            const purchasedNames = new Set(
-                receiptStore.allItems.map((i) => i.name.toLowerCase()),
-            );
-            const purchasedCategories = receiptStore.purchasedCategories;
-
-            const scored = this.allRecipes.map((recipe) => {
-                let score = 0;
-                for (const ingredient of recipe.ingredients) {
-                    if (purchasedNames.has(ingredient.name.toLowerCase())) {
-                        score += 3;
-                    } else if (purchasedCategories.has(ingredient.category)) {
-                        score += 1;
-                    }
-                }
-                return { recipe, score };
-            });
-
-            return scored
-                .filter((s) => s.score > 0)
-                .sort((a, b) => b.score - a.score)
-                .map((s) => s.recipe);
+            return rankRecipes(this.allRecipes, receiptStore.allItems).map((s) => s.recipe);
         },
 
         weekPlanRecipes(state): Record<string, RecipeInterface | undefined> {
