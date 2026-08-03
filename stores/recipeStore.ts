@@ -4,9 +4,23 @@ import { rankRecipes } from '~/composables/useRecipeMatch';
 import { useReceiptStore } from '~/stores/receiptStore';
 import { recipes } from '~/data/recipes';
 
+const USER_RECIPE_ID_PREFIX = 'user-';
+
+function nextUserRecipeId(existingRecipes: RecipeInterface[]): string {
+    const usedIds = new Set(existingRecipes.map((r) => r.id));
+    let index = 1;
+    while (usedIds.has(`${USER_RECIPE_ID_PREFIX}${index}`)) {
+        index += 1;
+    }
+    return `${USER_RECIPE_ID_PREFIX}${index}`;
+}
+
 export const useRecipeStore = defineStore('recipe', {
     state: () => ({
         allRecipes: recipes as RecipeInterface[],
+        userRecipes: JSON.parse(
+            localStorage.getItem('ah-planner-user-recipes') ?? '[]',
+        ) as RecipeInterface[],
         savedRecipeIds: JSON.parse(
             localStorage.getItem('ah-planner-saved-recipes') ?? '[]',
         ) as string[],
@@ -16,24 +30,71 @@ export const useRecipeStore = defineStore('recipe', {
     }),
 
     getters: {
-        savedRecipes: (state): RecipeInterface[] =>
-            state.allRecipes.filter((r) => state.savedRecipeIds.includes(r.id)),
+        availableRecipes: (state): RecipeInterface[] => [
+            ...state.allRecipes,
+            ...state.userRecipes,
+        ],
+
+        savedRecipes(): RecipeInterface[] {
+            return this.availableRecipes.filter((r) => this.savedRecipeIds.includes(r.id));
+        },
 
         suggestedRecipes(): RecipeInterface[] {
             const receiptStore = useReceiptStore();
-            return rankRecipes(this.allRecipes, receiptStore.allItems).map((s) => s.recipe);
+            return rankRecipes(this.availableRecipes, receiptStore.allItems).map((s) => s.recipe);
         },
 
-        weekPlanRecipes(state): Record<string, RecipeInterface | undefined> {
+        weekPlanRecipes(): Record<string, RecipeInterface | undefined> {
             const result: Record<string, RecipeInterface | undefined> = {};
-            for (const [day, recipeId] of Object.entries(state.weekPlan)) {
-                result[day] = state.allRecipes.find((r) => r.id === recipeId);
+            for (const [day, recipeId] of Object.entries(this.weekPlan)) {
+                result[day] = this.availableRecipes.find((r) => r.id === recipeId);
             }
             return result;
         },
     },
 
     actions: {
+        addRecipe(recipe: Omit<RecipeInterface, 'id'>): RecipeInterface {
+            const created = { ...recipe, id: nextUserRecipeId(this.availableRecipes) };
+            this.userRecipes.push(created);
+            this.persistUserRecipes();
+            return created;
+        },
+
+        updateRecipe(recipeId: string, changes: Partial<Omit<RecipeInterface, 'id'>>): void {
+            const recipe = this.userRecipes.find((r) => r.id === recipeId);
+            if (!recipe) {
+                return;
+            }
+            Object.assign(recipe, changes);
+            this.persistUserRecipes();
+        },
+
+        deleteRecipe(recipeId: string): void {
+            const index = this.userRecipes.findIndex((r) => r.id === recipeId);
+            if (index === -1) {
+                return;
+            }
+            this.userRecipes.splice(index, 1);
+            this.persistUserRecipes();
+
+            if (this.savedRecipeIds.includes(recipeId)) {
+                this.toggleSaveRecipe(recipeId);
+            }
+            for (const [day, plannedId] of Object.entries(this.weekPlan)) {
+                if (plannedId === recipeId) {
+                    this.removeFromDay(day);
+                }
+            }
+        },
+
+        persistUserRecipes(): void {
+            localStorage.setItem(
+                'ah-planner-user-recipes',
+                JSON.stringify(this.userRecipes),
+            );
+        },
+
         toggleSaveRecipe(recipeId: string): void {
             const index = this.savedRecipeIds.indexOf(recipeId);
             if (index === -1) {
