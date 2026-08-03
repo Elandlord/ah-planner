@@ -9,6 +9,7 @@ import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 const SAVED_RECIPES_KEY = 'ah-planner-saved-recipes';
+const USER_RECIPES_KEY = 'ah-planner-user-recipes';
 const WEEK_PLAN_KEY = 'ah-planner-week-plan';
 
 function createLocalStorageStub() {

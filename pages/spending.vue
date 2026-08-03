@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { useReceiptStore } from '~/stores/receiptStore';
+import { topEntries } from '~/composables/useItemFrequency';
 
 const receiptStore = useReceiptStore();
 
-const topItems = computed(() =>
-    Object.entries(receiptStore.itemFrequency)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 10),
-);
+const topItems = computed(() => topEntries(receiptStore.itemFrequency, 10));
 </script>
 
 <template>
