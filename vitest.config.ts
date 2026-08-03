@@ -9,7 +9,10 @@ export default defineConfig({
     plugins: [vue()],
     test: {
         environment: 'node',
-        environmentMatchGlobs: [['tests/unit/components/**', 'happy-dom']],
+        environmentMatchGlobs: [
+            ['tests/unit/components/**', 'happy-dom'],
+            ['tests/unit/pages/**', 'happy-dom'],
+        ],
         globals: true,
         setupFiles: ['./tests/unit/setup/vue-auto-imports.ts'],
     },
