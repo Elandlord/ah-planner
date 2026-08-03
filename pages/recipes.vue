@@ -1,18 +1,47 @@
 <script setup lang="ts">
+import type RecipeInterface from '~/types/RecipeInterface';
 import { useRecipeStore } from '~/stores/recipeStore';
 
 const recipeStore = useRecipeStore();
 
-const activeTab = ref<'suggested' | 'all' | 'saved' | 'weekplan'>('suggested');
+const activeTab = ref<'suggested' | 'all' | 'saved' | 'mine' | 'weekplan'>('suggested');
 const selectedDay = ref('');
+const isFormOpen = ref(false);
+const editedRecipe = ref<RecipeInterface | null>(null);
 
 const days = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
+
+const formKey = computed(() => editedRecipe.value?.id ?? 'new');
 
 function assignRecipe(recipeId: string): void {
     if (!selectedDay.value) {
         selectedDay.value = days[0];
     }
     recipeStore.assignToDay(selectedDay.value, recipeId);
+}
+
+function openNewRecipeForm(): void {
+    editedRecipe.value = null;
+    isFormOpen.value = true;
+}
+
+function openEditRecipeForm(recipe: RecipeInterface): void {
+    editedRecipe.value = recipe;
+    isFormOpen.value = true;
+}
+
+function closeForm(): void {
+    isFormOpen.value = false;
+    editedRecipe.value = null;
+}
+
+function saveRecipe(recipe: Omit<RecipeInterface, 'id'>): void {
+    if (editedRecipe.value) {
+        recipeStore.updateRecipe(editedRecipe.value.id, recipe);
+    } else {
+        recipeStore.addRecipe(recipe);
+    }
+    closeForm();
 }
 </script>
 
@@ -43,6 +72,13 @@ function assignRecipe(recipeId: string): void {
                 @click="activeTab = 'saved'"
             >
                 Opgeslagen
+            </button>
+            <button
+                class="tab"
+                :class="{ 'tab--active': activeTab === 'mine' }"
+                @click="activeTab = 'mine'"
+            >
+                Mijn recepten
             </button>
             <button
                 class="tab"
@@ -126,7 +162,7 @@ function assignRecipe(recipeId: string): void {
             class="recipe-grid"
         >
             <RecipeCard
-                v-for="recipe in recipeStore.allRecipes"
+                v-for="recipe in recipeStore.availableRecipes"
                 :key="recipe.id"
                 :recipe="recipe"
                 :is-saved="recipeStore.savedRecipeIds.includes(recipe.id)"
@@ -154,6 +190,59 @@ function assignRecipe(recipeId: string): void {
                 @assign="assignRecipe(recipe.id)"
             />
         </div>
+
+        <div
+            v-if="activeTab === 'mine'"
+            class="recipe-grid"
+        >
+            <RecipeForm
+                v-if="isFormOpen"
+                :key="formKey"
+                :recipe="editedRecipe"
+                @submit="saveRecipe"
+                @cancel="closeForm"
+            />
+            <button
+                v-else
+                class="new-recipe-btn"
+                @click="openNewRecipeForm"
+            >
+                Nieuw recept
+            </button>
+
+            <p
+                v-if="recipeStore.userRecipes.length === 0"
+                class="empty-state"
+            >
+                Nog geen eigen recepten.
+            </p>
+            <div
+                v-for="recipe in recipeStore.userRecipes"
+                :key="recipe.id"
+                class="user-recipe"
+            >
+                <RecipeCard
+                    :recipe="recipe"
+                    :is-saved="recipeStore.savedRecipeIds.includes(recipe.id)"
+                    @toggle-save="recipeStore.toggleSaveRecipe(recipe.id)"
+                    @assign="assignRecipe(recipe.id)"
+                />
+                <div class="user-recipe-actions">
+                    <button
+                        class="edit-recipe-btn"
+                        @click="openEditRecipeForm(recipe)"
+                    >
+                        Bewerken
+                    </button>
+                    <button
+                        class="delete-recipe-btn"
+                        @click="recipeStore.deleteRecipe(recipe.id)"
+                    >
+                        Verwijderen
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -180,6 +269,26 @@ function assignRecipe(recipeId: string): void {
 
 .empty-state {
     @apply text-gray-500 text-center py-8;
+}
+
+.new-recipe-btn {
+    @apply bg-blue-600 text-white text-sm rounded px-4 py-2;
+}
+
+.user-recipe {
+    @apply bg-white rounded-lg shadow;
+}
+
+.user-recipe-actions {
+    @apply flex gap-3 px-4 pb-4;
+}
+
+.edit-recipe-btn {
+    @apply text-sm text-blue-600 hover:text-blue-800;
+}
+
+.delete-recipe-btn {
+    @apply text-sm text-red-600 hover:text-red-800;
 }
 
 .week-plan {
