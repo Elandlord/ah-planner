@@ -303,6 +303,54 @@ describe('recipeStore', () => {
         });
     });
 
+    describe('exportData', () => {
+        it('returns the saved recipe ids and the week plan', () => {
+            // #given
+            const store = useRecipeStore();
+            store.savedRecipeIds = ['recipe-1'];
+            store.weekPlan = { woensdag: 'recipe-1' };
+
+            // #when
+            const exported = store.exportData();
+
+            // #then
+            expect(exported).toEqual({
+                savedRecipeIds: ['recipe-1'],
+                weekPlan: { woensdag: 'recipe-1' },
+            });
+        });
+    });
+
+    describe('importData', () => {
+        it('replaces the saved recipe ids and the week plan', () => {
+            // #given
+            const store = useRecipeStore();
+            store.savedRecipeIds = ['recipe-1'];
+            store.weekPlan = { woensdag: 'recipe-1' };
+
+            // #when
+            store.importData({ savedRecipeIds: ['recipe-2'], weekPlan: { dinsdag: 'recipe-2' } });
+
+            // #then
+            expect(store.savedRecipeIds).toEqual(['recipe-2']);
+            expect(store.weekPlan).toEqual({ dinsdag: 'recipe-2' });
+        });
+
+        it('persists the imported data to storage', () => {
+            // #given
+            const store = useRecipeStore();
+
+            // #when
+            store.importData({ savedRecipeIds: ['recipe-2'], weekPlan: { dinsdag: 'recipe-2' } });
+
+            // #then
+            expect(localStorage.getItem(SAVED_RECIPES_KEY)).toBe(JSON.stringify(['recipe-2']));
+            expect(localStorage.getItem(WEEK_PLAN_KEY)).toBe(
+                JSON.stringify({ dinsdag: 'recipe-2' }),
+            );
+        });
+    });
+
     describe('removeFromDay', () => {
         it('removes the recipe assigned to the given day', () => {
             // #given
