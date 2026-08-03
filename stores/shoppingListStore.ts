@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import type ShoppingListItemInterface from '~/types/ShoppingListItemInterface';
 import { useReceiptStore } from '~/stores/receiptStore';
+import { topEntries } from '~/composables/useItemFrequency';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 const STORAGE_KEY = 'ah-planner-shopping-list';
@@ -82,9 +83,7 @@ export const useShoppingListStore = defineStore('shoppingList', {
             const frequency = receiptStore.itemFrequency;
             const allItems = receiptStore.allItems;
 
-            const topItems = Object.entries(frequency)
-                .sort(([, a], [, b]) => b - a)
-                .slice(0, 20);
+            const topItems = topEntries(frequency, 20);
 
             for (const [name, freq] of topItems) {
                 const existingItem = this.items.find(
