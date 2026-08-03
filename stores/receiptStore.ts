@@ -89,5 +89,14 @@ export const useReceiptStore = defineStore('receipt', {
             this.receipts[index] = updatedReceipt;
             saveToStorage(this.receipts);
         },
+
+        exportData(): ReceiptInterface[] {
+            return this.receipts;
+        },
+
+        importData(receipts: ReceiptInterface[]): void {
+            this.receipts = receipts;
+            saveToStorage(this.receipts);
+        },
     },
 });

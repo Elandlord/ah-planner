@@ -5,6 +5,7 @@ const navItems = [
     { to: '/spending', label: 'Uitgaven' },
     { to: '/recipes', label: 'Recepten' },
     { to: '/shopping-list', label: 'Boodschappen' },
+    { to: '/settings', label: 'Instellingen' },
 ];
 </script>
 

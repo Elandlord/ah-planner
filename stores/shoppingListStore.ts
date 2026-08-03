@@ -107,5 +107,14 @@ export const useShoppingListStore = defineStore('shoppingList', {
             }
             saveToStorage(this.items);
         },
+
+        exportData(): ShoppingListItemInterface[] {
+            return this.items;
+        },
+
+        importData(items: ShoppingListItemInterface[]): void {
+            this.items = items;
+            saveToStorage(this.items);
+        },
     },
 });

@@ -304,203 +304,51 @@ describe('recipeStore', () => {
         });
     });
 
-    describe('addRecipe', () => {
-        it('stores the recipe under a generated id', () => {
+    describe('exportData', () => {
+        it('returns the saved recipe ids and the week plan', () => {
             // #given
             const store = useRecipeStore();
-            const { id, ...recipe } = makeRecipe({ name: 'Eigen recept' });
+            store.savedRecipeIds = ['recipe-1'];
+            store.weekPlan = { woensdag: 'recipe-1' };
 
             // #when
-            const created = store.addRecipe(recipe);
+            const exported = store.exportData();
 
             // #then
-            expect(created.id).toBe('user-1');
-            expect(store.userRecipes).toEqual([created]);
-        });
-
-        it('never reuses an id already taken by a built-in recipe', () => {
-            // #given
-            const store = useRecipeStore();
-            store.allRecipes = [makeRecipe({ id: 'user-1' })];
-            const { id, ...recipe } = makeRecipe();
-
-            // #when
-            const created = store.addRecipe(recipe);
-
-            // #then
-            expect(created.id).toBe('user-2');
-        });
-
-        it('never reuses an id already taken by another user recipe', () => {
-            // #given
-            const store = useRecipeStore();
-            store.userRecipes = [makeRecipe({ id: 'user-1' }), makeRecipe({ id: 'user-2' })];
-            const { id, ...recipe } = makeRecipe();
-
-            // #when
-            const created = store.addRecipe(recipe);
-
-            // #then
-            expect(created.id).toBe('user-3');
-        });
-
-        it('persists the user recipes to storage', () => {
-            // #given
-            const store = useRecipeStore();
-            const { id, ...recipe } = makeRecipe();
-
-            // #when
-            const created = store.addRecipe(recipe);
-
-            // #then
-            expect(localStorage.getItem(USER_RECIPES_KEY)).toBe(JSON.stringify([created]));
-        });
-
-        it('makes the recipe available for pantry matching', () => {
-            // #given
-            const store = useRecipeStore();
-            store.allRecipes = [];
-            const { id, ...recipe } = makeRecipe({
-                ingredients: [makeIngredient({ name: 'melk' })],
+            expect(exported).toEqual({
+                savedRecipeIds: ['recipe-1'],
+                weekPlan: { woensdag: 'recipe-1' },
             });
-            seedPurchasedItems([makeItem({ name: 'melk' })]);
-
-            // #when
-            const created = store.addRecipe(recipe);
-
-            // #then
-            expect(store.suggestedRecipes.map((r) => r.id)).toEqual([created.id]);
-        });
-
-        it('makes the recipe available for the week plan', () => {
-            // #given
-            const store = useRecipeStore();
-            const { id, ...recipe } = makeRecipe();
-            const created = store.addRecipe(recipe);
-
-            // #when
-            store.assignToDay('maandag', created.id);
-
-            // #then
-            expect(store.weekPlanRecipes.maandag).toEqual(created);
-        });
-
-        it('makes the recipe available to save', () => {
-            // #given
-            const store = useRecipeStore();
-            const { id, ...recipe } = makeRecipe();
-            const created = store.addRecipe(recipe);
-
-            // #when
-            store.toggleSaveRecipe(created.id);
-
-            // #then
-            expect(store.savedRecipes).toEqual([created]);
         });
     });
 
-    describe('updateRecipe', () => {
-        it('applies the changes to the user recipe', () => {
+    describe('importData', () => {
+        it('replaces the saved recipe ids and the week plan', () => {
             // #given
             const store = useRecipeStore();
-            store.userRecipes = [makeRecipe({ id: 'user-1' })];
+            store.savedRecipeIds = ['recipe-1'];
+            store.weekPlan = { woensdag: 'recipe-1' };
 
             // #when
-            store.updateRecipe('user-1', { name: 'Nieuwe naam', servings: 2 });
-
-            // #then
-            expect(store.userRecipes[0].name).toBe('Nieuwe naam');
-            expect(store.userRecipes[0].servings).toBe(2);
-        });
-
-        it('persists the user recipes to storage', () => {
-            // #given
-            const store = useRecipeStore();
-            store.userRecipes = [makeRecipe({ id: 'user-1' })];
-
-            // #when
-            store.updateRecipe('user-1', { name: 'Nieuwe naam' });
-
-            // #then
-            expect(localStorage.getItem(USER_RECIPES_KEY)).toBe(
-                JSON.stringify(store.userRecipes),
-            );
-        });
-
-        it('leaves a built-in recipe untouched', () => {
-            // #given
-            const store = useRecipeStore();
-            store.allRecipes = [makeRecipe({ id: 'stamppot-boerenkool' })];
-
-            // #when
-            store.updateRecipe('stamppot-boerenkool', { name: 'Nieuwe naam' });
-
-            // #then
-            expect(store.allRecipes[0].name).toBe('Pannenkoeken');
-        });
-    });
-
-    describe('deleteRecipe', () => {
-        it('removes the user recipe', () => {
-            // #given
-            const store = useRecipeStore();
-            store.userRecipes = [makeRecipe({ id: 'user-1' }), makeRecipe({ id: 'user-2' })];
-
-            // #when
-            store.deleteRecipe('user-1');
-
-            // #then
-            expect(store.userRecipes.map((r) => r.id)).toEqual(['user-2']);
-        });
-
-        it('persists the user recipes to storage', () => {
-            // #given
-            const store = useRecipeStore();
-            store.userRecipes = [makeRecipe({ id: 'user-1' })];
-
-            // #when
-            store.deleteRecipe('user-1');
-
-            // #then
-            expect(localStorage.getItem(USER_RECIPES_KEY)).toBe(JSON.stringify([]));
-        });
-
-        it('unsaves the deleted recipe', () => {
-            // #given
-            const store = useRecipeStore();
-            store.userRecipes = [makeRecipe({ id: 'user-1' })];
-            store.savedRecipeIds = ['user-1', 'recipe-2'];
-
-            // #when
-            store.deleteRecipe('user-1');
+            store.importData({ savedRecipeIds: ['recipe-2'], weekPlan: { dinsdag: 'recipe-2' } });
 
             // #then
             expect(store.savedRecipeIds).toEqual(['recipe-2']);
-        });
-
-        it('clears every day the deleted recipe was planned on', () => {
-            // #given
-            const store = useRecipeStore();
-            store.userRecipes = [makeRecipe({ id: 'user-1' })];
-            store.weekPlan = { maandag: 'user-1', dinsdag: 'recipe-2', woensdag: 'user-1' };
-
-            // #when
-            store.deleteRecipe('user-1');
-
-            // #then
             expect(store.weekPlan).toEqual({ dinsdag: 'recipe-2' });
         });
 
-        it('leaves a built-in recipe untouched', () => {
+        it('persists the imported data to storage', () => {
             // #given
             const store = useRecipeStore();
-            store.allRecipes = [makeRecipe({ id: 'stamppot-boerenkool' })];
 
             // #when
-            store.deleteRecipe('stamppot-boerenkool');
+            store.importData({ savedRecipeIds: ['recipe-2'], weekPlan: { dinsdag: 'recipe-2' } });
 
             // #then
-            expect(store.allRecipes.map((r) => r.id)).toEqual(['stamppot-boerenkool']);
+            expect(localStorage.getItem(SAVED_RECIPES_KEY)).toBe(JSON.stringify(['recipe-2']));
+            expect(localStorage.getItem(WEEK_PLAN_KEY)).toBe(
+                JSON.stringify({ dinsdag: 'recipe-2' }),
+            );
         });
     });
 

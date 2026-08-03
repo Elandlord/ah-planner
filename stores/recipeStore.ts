@@ -123,5 +123,25 @@ export const useRecipeStore = defineStore('recipe', {
                 JSON.stringify(this.weekPlan),
             );
         },
+
+        exportData(): { savedRecipeIds: string[]; weekPlan: Record<string, string> } {
+            return {
+                savedRecipeIds: this.savedRecipeIds,
+                weekPlan: this.weekPlan,
+            };
+        },
+
+        importData(data: { savedRecipeIds: string[]; weekPlan: Record<string, string> }): void {
+            this.savedRecipeIds = data.savedRecipeIds;
+            this.weekPlan = data.weekPlan;
+            localStorage.setItem(
+                'ah-planner-saved-recipes',
+                JSON.stringify(this.savedRecipeIds),
+            );
+            localStorage.setItem(
+                'ah-planner-week-plan',
+                JSON.stringify(this.weekPlan),
+            );
+        },
     },
 });

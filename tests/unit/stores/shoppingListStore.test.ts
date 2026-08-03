@@ -279,6 +279,45 @@ describe('shoppingListStore', () => {
         });
     });
 
+    describe('exportData', () => {
+        it('returns the current items', () => {
+            // #given
+            const store = useShoppingListStore();
+            store.items = [makeListItem()];
+
+            // #when
+            const exported = store.exportData();
+
+            // #then
+            expect(exported).toEqual([makeListItem()]);
+        });
+    });
+
+    describe('importData', () => {
+        it('replaces the items with the imported ones', () => {
+            // #given
+            const store = useShoppingListStore();
+            store.items = [makeListItem()];
+
+            // #when
+            store.importData([makeListItem({ name: 'Brood' })]);
+
+            // #then
+            expect(store.items).toEqual([makeListItem({ name: 'Brood' })]);
+        });
+
+        it('persists the imported items to storage', () => {
+            // #given
+            const store = useShoppingListStore();
+
+            // #when
+            store.importData([makeListItem()]);
+
+            // #then
+            expect(storedItems()).toEqual([makeListItem()]);
+        });
+    });
+
     describe('uncheckedItems', () => {
         it('returns only the items that are not checked', () => {
             // #given

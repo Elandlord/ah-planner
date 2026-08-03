@@ -314,6 +314,45 @@ describe('receiptStore', () => {
         });
     });
 
+    describe('exportData', () => {
+        it('returns the current receipts', () => {
+            // #given
+            const store = useReceiptStore();
+            store.receipts = [makeReceipt()];
+
+            // #when
+            const exported = store.exportData();
+
+            // #then
+            expect(exported).toEqual([makeReceipt()]);
+        });
+    });
+
+    describe('importData', () => {
+        it('replaces the receipts with the imported ones', () => {
+            // #given
+            const store = useReceiptStore();
+            store.receipts = [makeReceipt()];
+
+            // #when
+            store.importData([makeReceipt({ id: 'receipt-2' })]);
+
+            // #then
+            expect(store.receipts).toEqual([makeReceipt({ id: 'receipt-2' })]);
+        });
+
+        it('persists the imported receipts to storage', () => {
+            // #given
+            const store = useReceiptStore();
+
+            // #when
+            store.importData([makeReceipt()]);
+
+            // #then
+            expect(storedReceipts()).toEqual([makeReceipt()]);
+        });
+    });
+
     describe('purchasedCategories', () => {
         it('collects the unique categories of every item', () => {
             // #given
