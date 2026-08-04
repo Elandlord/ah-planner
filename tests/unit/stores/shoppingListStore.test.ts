@@ -271,6 +271,26 @@ describe('shoppingListStore', () => {
             ]);
         });
 
+        it('falls back to the overig category when no purchased item matches', () => {
+            // #given
+            const store = useShoppingListStore();
+            seedPurchasedItems([makeItem({ name: 'Kaas' })]);
+            vi.spyOn(useReceiptStore(), 'itemFrequency', 'get').mockReturnValue({ mystery: 1 });
+
+            // #when
+            store.generateFromHistory();
+
+            // #then
+            expect(store.items).toEqual([
+                {
+                    name: 'mystery',
+                    category: ProductCategoryEnum.overig,
+                    checked: false,
+                    frequency: 1,
+                },
+            ]);
+        });
+
         it('adds at most the twenty most frequent items', () => {
             // #given
             const store = useShoppingListStore();
