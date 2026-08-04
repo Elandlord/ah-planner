@@ -1,6 +1,7 @@
 import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
+import type CategoryOverridesInterface from '~/types/CategoryOverridesInterface';
 
 const CATEGORY_KEYWORDS: Record<string, ProductCategoryEnum> = {
     sla: ProductCategoryEnum.groente,
@@ -107,17 +108,40 @@ const CATEGORY_KEYWORDS: Record<string, ProductCategoryEnum> = {
     wasmiddel: ProductCategoryEnum.huishouden,
 };
 
-function categorizeProduct(name: string): ProductCategoryEnum {
-    const lowerName = name.toLowerCase();
+const TRAILING_SIZE_PATTERN = /\s+\d+([.,]\d+)?\s*(gram|gr|kg|ml|cl|ltr|stuks|st|g|l|x)$/;
+
+export function normalizeProductName(name: string): string {
+    return name
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(TRAILING_SIZE_PATTERN, '')
+        .trim();
+}
+
+function categorizeProduct(
+    name: string,
+    overrides: CategoryOverridesInterface = {},
+): ProductCategoryEnum {
+    const normalizedName = normalizeProductName(name);
+
+    const override = overrides[normalizedName];
+    if (override) {
+        return override;
+    }
+
     for (const [keyword, category] of Object.entries(CATEGORY_KEYWORDS)) {
-        if (lowerName.includes(keyword)) {
+        if (normalizedName.includes(keyword)) {
             return category;
         }
     }
     return ProductCategoryEnum.overig;
 }
 
-export function parseReceiptText(rawText: string): ReceiptItemInterface[] {
+export function parseReceiptText(
+    rawText: string,
+    overrides: CategoryOverridesInterface = {},
+): ReceiptItemInterface[] {
     const lines = rawText.split('\n').map((line) => line.trim()).filter(Boolean);
     const items: ReceiptItemInterface[] = [];
 
@@ -156,7 +180,7 @@ export function parseReceiptText(rawText: string): ReceiptItemInterface[] {
                 name,
                 quantity,
                 price: unitPrice ?? totalPrice,
-                category: categorizeProduct(name),
+                category: categorizeProduct(name, overrides),
             });
             continue;
         }
@@ -167,7 +191,7 @@ export function parseReceiptText(rawText: string): ReceiptItemInterface[] {
                 name: qtyMatch[2].trim(),
                 quantity: parseInt(qtyMatch[1], 10),
                 price: parsePrice(qtyMatch[3]),
-                category: categorizeProduct(qtyMatch[2]),
+                category: categorizeProduct(qtyMatch[2], overrides),
             });
             continue;
         }
@@ -178,7 +202,7 @@ export function parseReceiptText(rawText: string): ReceiptItemInterface[] {
                 name: priceMatch[1].trim(),
                 quantity: 1,
                 price: parsePrice(priceMatch[2]),
-                category: categorizeProduct(priceMatch[1]),
+                category: categorizeProduct(priceMatch[1], overrides),
             });
         }
     }
@@ -285,8 +309,11 @@ export function extractDate(rawText: string): string {
     return new Date().toISOString().split('T')[0];
 }
 
-export function buildReceipt(rawText: string): ReceiptInterface {
-    const items = parseReceiptText(rawText);
+export function buildReceipt(
+    rawText: string,
+    overrides: CategoryOverridesInterface = {},
+): ReceiptInterface {
+    const items = parseReceiptText(rawText, overrides);
     const total = extractTotal(rawText) || items.reduce(
         (sum, item) => sum + item.price * item.quantity, 0,
     );
@@ -308,5 +335,6 @@ export function useReceiptParser() {
         extractDate,
         buildReceipt,
         categorizeProduct,
+        normalizeProductName,
     };
 }

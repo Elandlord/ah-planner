@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import { useReceiptStore } from '~/stores/receiptStore';
+import { useCategoryOverrideStore } from '~/stores/categoryOverrideStore';
 import { useOcr } from '~/composables/useOcr';
 
 const receiptStore = useReceiptStore();
-const { isProcessing, progress, rawText, error, processImage, processPdf, processText } = useOcr();
+const categoryOverrideStore = useCategoryOverrideStore();
+const { isProcessing, progress, rawText, error, processImage, processPdf, processText } =
+    useOcr(() => categoryOverrideStore.overrides);
 
 const parsedReceipt = ref<ReceiptInterface | null>(null);
 const manualInput = ref(false);

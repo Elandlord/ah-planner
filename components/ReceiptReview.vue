@@ -2,8 +2,11 @@
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
+import { useCategoryOverrideStore } from '~/stores/categoryOverrideStore';
 
 const receipt = defineModel<ReceiptInterface>({ required: true });
+
+const categoryOverrideStore = useCategoryOverrideStore();
 
 const emit = defineEmits<{
     save: [];
@@ -27,6 +30,10 @@ function addItem(): void {
 
 function removeItem(index: number): void {
     receipt.value.items.splice(index, 1);
+}
+
+function rememberCategory(name: string, category: ProductCategoryEnum): void {
+    categoryOverrideStore.setOverride(name, category);
 }
 </script>
 
@@ -61,6 +68,7 @@ function removeItem(index: number): void {
             :key="index"
             v-model="receipt.items[index]"
             @remove="removeItem(index)"
+            @category-change="rememberCategory(item.name, $event)"
         />
 
         <button
