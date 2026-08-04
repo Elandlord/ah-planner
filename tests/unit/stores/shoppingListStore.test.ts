@@ -2,9 +2,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useShoppingListStore } from '~/stores/shoppingListStore';
 import { useReceiptStore } from '~/stores/receiptStore';
+import { useRecipeStore } from '~/stores/recipeStore';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import type ShoppingListItemInterface from '~/types/ShoppingListItemInterface';
+import type RecipeInterface from '~/types/RecipeInterface';
+import type RecipeIngredientInterface from '~/types/RecipeIngredientInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 const STORAGE_KEY = 'ah-planner-shopping-list';
@@ -55,6 +58,38 @@ function makeReceipt(overrides: Partial<ReceiptInterface> = {}): ReceiptInterfac
 function seedPurchasedItems(items: ReceiptItemInterface[]): void {
     const receiptStore = useReceiptStore();
     receiptStore.receipts = [makeReceipt({ items })];
+}
+
+function makeIngredient(
+    overrides: Partial<RecipeIngredientInterface> = {},
+): RecipeIngredientInterface {
+    return {
+        name: 'melk',
+        amount: '100ml',
+        category: ProductCategoryEnum.zuivel,
+        ...overrides,
+    };
+}
+
+function makeRecipe(overrides: Partial<RecipeInterface> = {}): RecipeInterface {
+    return {
+        id: 'recipe-1',
+        name: 'Pannenkoeken',
+        description: 'Nederlandse pannenkoeken.',
+        servings: 4,
+        prepTimeMinutes: 20,
+        ingredients: [makeIngredient()],
+        instructions: ['Bak de pannenkoeken.'],
+        tags: ['klassiek'],
+        ...overrides,
+    };
+}
+
+function seedWeekPlan(weekPlan: Record<string, string>, recipes: RecipeInterface[]): void {
+    const recipeStore = useRecipeStore();
+    recipeStore.allRecipes = [];
+    recipeStore.userRecipes = recipes;
+    recipeStore.weekPlan = weekPlan;
 }
 
 function storedItems(): ShoppingListItemInterface[] {
@@ -276,6 +311,129 @@ describe('shoppingListStore', () => {
 
             // #then
             expect(storedItems().map((item) => item.name)).toEqual(['melk']);
+        });
+    });
+
+    describe('generateFromWeekPlan', () => {
+        it('adds the missing ingredients of an assigned recipe', () => {
+            // #given
+            const store = useShoppingListStore();
+            seedPurchasedItems([]);
+            seedWeekPlan(
+                { monday: 'recipe-1' },
+                [
+                    makeRecipe({
+                        id: 'recipe-1',
+                        ingredients: [
+                            makeIngredient({ name: 'boerenkool', category: ProductCategoryEnum.groente }),
+                        ],
+                    }),
+                ],
+            );
+
+            // #when
+            store.generateFromWeekPlan();
+
+            // #then
+            expect(store.items).toEqual([
+                { name: 'boerenkool', category: ProductCategoryEnum.groente, checked: false, frequency: 1 },
+            ]);
+        });
+
+        it('does not add ingredients already covered by purchase history', () => {
+            // #given
+            const store = useShoppingListStore();
+            seedPurchasedItems([makeItem({ name: 'melk' })]);
+            seedWeekPlan(
+                { monday: 'recipe-1' },
+                [makeRecipe({ id: 'recipe-1', ingredients: [makeIngredient({ name: 'melk' })] })],
+            );
+
+            // #when
+            store.generateFromWeekPlan();
+
+            // #then
+            expect(store.items).toEqual([]);
+        });
+
+        it('sums the frequency when an ingredient repeats across assigned recipes', () => {
+            // #given
+            const store = useShoppingListStore();
+            seedPurchasedItems([]);
+            seedWeekPlan(
+                { monday: 'recipe-1', tuesday: 'recipe-2' },
+                [
+                    makeRecipe({
+                        id: 'recipe-1',
+                        ingredients: [makeIngredient({ name: 'uien', category: ProductCategoryEnum.groente })],
+                    }),
+                    makeRecipe({
+                        id: 'recipe-2',
+                        ingredients: [makeIngredient({ name: 'uien', category: ProductCategoryEnum.groente })],
+                    }),
+                ],
+            );
+
+            // #when
+            store.generateFromWeekPlan();
+
+            // #then
+            expect(store.items).toEqual([
+                { name: 'uien', category: ProductCategoryEnum.groente, checked: false, frequency: 2 },
+            ]);
+        });
+
+        it('skips ingredients that are already on the list', () => {
+            // #given
+            const store = useShoppingListStore();
+            store.items = [makeListItem({ name: 'boerenkool', category: ProductCategoryEnum.groente })];
+            seedPurchasedItems([]);
+            seedWeekPlan(
+                { monday: 'recipe-1' },
+                [
+                    makeRecipe({
+                        id: 'recipe-1',
+                        ingredients: [makeIngredient({ name: 'boerenkool', category: ProductCategoryEnum.groente })],
+                    }),
+                ],
+            );
+
+            // #when
+            store.generateFromWeekPlan();
+
+            // #then
+            expect(store.items).toEqual([
+                makeListItem({ name: 'boerenkool', category: ProductCategoryEnum.groente }),
+            ]);
+        });
+
+        it('ignores days without an assigned recipe', () => {
+            // #given
+            const store = useShoppingListStore();
+            seedPurchasedItems([]);
+            seedWeekPlan({ monday: 'missing-recipe' }, []);
+
+            // #when
+            store.generateFromWeekPlan();
+
+            // #then
+            expect(store.items).toEqual([]);
+        });
+
+        it('persists the generated items to storage', () => {
+            // #given
+            const store = useShoppingListStore();
+            seedPurchasedItems([]);
+            seedWeekPlan(
+                { monday: 'recipe-1' },
+                [makeRecipe({ id: 'recipe-1', ingredients: [makeIngredient({ name: 'boerenkool' })] })],
+            );
+
+            // #when
+            store.generateFromWeekPlan();
+
+            // #then
+            expect(storedItems().map((item) => item.name)).toEqual(['boerenkool']);
         });
     });
 

@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia';
 import type ShoppingListItemInterface from '~/types/ShoppingListItemInterface';
 import { useReceiptStore } from '~/stores/receiptStore';
+import { useRecipeStore } from '~/stores/recipeStore';
 import { topEntries } from '~/composables/useItemFrequency';
+import { scoreRecipe } from '~/composables/useRecipeMatch';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 const STORAGE_KEY = 'ah-planner-shopping-list';
@@ -103,6 +105,55 @@ export const useShoppingListStore = defineStore('shoppingList', {
                     category,
                     checked: false,
                     frequency: freq,
+                });
+            }
+            saveToStorage(this.items);
+        },
+
+        generateFromWeekPlan(): void {
+            const recipeStore = useRecipeStore();
+            const receiptStore = useReceiptStore();
+            const purchasedNames = new Set(receiptStore.allItems.map((i) => i.name.toLowerCase()));
+            const purchasedCategories = new Set(receiptStore.allItems.map((i) => i.category));
+
+            const missingByName = new Map<string, { category: ProductCategoryEnum; count: number }>();
+
+            for (const recipe of Object.values(recipeStore.weekPlanRecipes)) {
+                if (!recipe) {
+                    continue;
+                }
+
+                const { missingIngredients } = scoreRecipe(recipe, purchasedNames, purchasedCategories);
+                const missingNames = new Set(missingIngredients.map((name) => name.toLowerCase()));
+
+                for (const ingredient of recipe.ingredients) {
+                    const name = ingredient.name.toLowerCase();
+                    if (!missingNames.has(name)) {
+                        continue;
+                    }
+
+                    const existing = missingByName.get(name);
+                    if (existing) {
+                        existing.count += 1;
+                    } else {
+                        missingByName.set(name, { category: ingredient.category, count: 1 });
+                    }
+                }
+            }
+
+            for (const [name, { category, count }] of missingByName) {
+                const existingItem = this.items.find(
+                    (i) => i.name.toLowerCase() === name,
+                );
+                if (existingItem) {
+                    continue;
+                }
+
+                this.items.push({
+                    name,
+                    category,
+                    checked: false,
+                    frequency: count,
                 });
             }
             saveToStorage(this.items);
