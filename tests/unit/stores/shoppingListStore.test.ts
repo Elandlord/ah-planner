@@ -277,6 +277,22 @@ describe('shoppingListStore', () => {
             // #then
             expect(storedItems().map((item) => item.name)).toEqual(['melk']);
         });
+
+        it('defaults to ProductCategoryEnum.overig when no purchased item matches the frequency entry', () => {
+            // #given
+            const store = useShoppingListStore();
+            const receiptStore = useReceiptStore();
+            seedPurchasedItems([makeItem({ name: 'Kaas' })]);
+            vi.spyOn(receiptStore, 'itemFrequency', 'get').mockReturnValue({ mystery: 1 });
+
+            // #when
+            store.generateFromHistory();
+
+            // #then
+            expect(store.items).toEqual([
+                { name: 'mystery', category: ProductCategoryEnum.overig, checked: false, frequency: 1 },
+            ]);
+        });
     });
 
     describe('exportData', () => {
