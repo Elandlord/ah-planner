@@ -48,6 +48,32 @@ describe('ReceiptItemRow', () => {
         });
     });
 
+    describe('category corrections', () => {
+        it('emits categoryChange with the picked category when the select changes', async () => {
+            // #given
+            const item = reactive(makeItem());
+            const wrapper = mountItemRow(item);
+
+            // #when
+            await wrapper.find('.item-category').setValue(ProductCategoryEnum.groente);
+
+            // #then
+            expect(wrapper.emitted('categoryChange')).toEqual([[ProductCategoryEnum.groente]]);
+        });
+
+        it('updates the model before emitting categoryChange', async () => {
+            // #given
+            const item = reactive(makeItem());
+            const wrapper = mountItemRow(item);
+
+            // #when
+            await wrapper.find('.item-category').setValue(ProductCategoryEnum.groente);
+
+            // #then
+            expect(item.category).toBe(ProductCategoryEnum.groente);
+        });
+    });
+
     describe('v-model updates', () => {
         it('updates the model when the name input changes', async () => {
             // #given
