@@ -372,7 +372,13 @@ describe('shoppingListStore', () => {
 
             // #then
             expect(store.items).toEqual([
-                { name: 'boerenkool', category: ProductCategoryEnum.groente, checked: false, frequency: 1 },
+                {
+                    name: 'boerenkool',
+                    category: ProductCategoryEnum.groente,
+                    checked: false,
+                    frequency: 1,
+                    sources: [{ day: 'monday', recipeName: 'Pannenkoeken' }],
+                },
             ]);
         });
 
@@ -415,7 +421,16 @@ describe('shoppingListStore', () => {
 
             // #then
             expect(store.items).toEqual([
-                { name: 'uien', category: ProductCategoryEnum.groente, checked: false, frequency: 2 },
+                {
+                    name: 'uien',
+                    category: ProductCategoryEnum.groente,
+                    checked: false,
+                    frequency: 2,
+                    sources: [
+                        { day: 'monday', recipeName: 'Pannenkoeken' },
+                        { day: 'tuesday', recipeName: 'Pannenkoeken' },
+                    ],
+                },
             ]);
         });
 
