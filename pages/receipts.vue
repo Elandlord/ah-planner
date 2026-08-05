@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useReceiptStore } from '~/stores/receiptStore';
 import { useReceiptExport } from '~/composables/useReceiptExport';
+import { useReceiptOriginalStore } from '~/composables/useReceiptOriginalStore';
 
 const receiptStore = useReceiptStore();
 const { filterByWeek, filterByMonth, toCsv, toJson, downloadFile } = useReceiptExport();
+const originalStore = useReceiptOriginalStore();
 
 const expandedId = ref<string | null>(null);
 const activeFilter = ref<'all' | 'week' | 'month'>('all');
@@ -67,6 +69,14 @@ function exportJson(): void {
     const json = toJson(exportReceipts.value);
     downloadFile(json, 'bonnen.json', 'application/json');
     showExportMenu.value = false;
+}
+
+async function viewOriginal(receiptId: string): Promise<void> {
+    const blob = await originalStore.getOriginal(receiptId);
+    if (!blob) {
+        return;
+    }
+    window.open(URL.createObjectURL(blob), '_blank');
 }
 
 function formatDate(dateStr: string): string {
@@ -210,12 +220,21 @@ watch(activeFilter, () => {
                         <span class="item-qty">{{ item.quantity }}x</span>
                         <span class="item-price">&euro;{{ item.price.toFixed(2) }}</span>
                     </div>
-                    <button
-                        class="delete-btn"
-                        @click="receiptStore.removeReceipt(receipt.id)"
-                    >
-                        Bon verwijderen
-                    </button>
+                    <div class="receipt-item-actions">
+                        <button
+                            v-if="receipt.hasOriginal"
+                            class="view-original-btn"
+                            @click="viewOriginal(receipt.id)"
+                        >
+                            Origineel bekijken
+                        </button>
+                        <button
+                            class="delete-btn"
+                            @click="receiptStore.removeReceipt(receipt.id)"
+                        >
+                            Bon verwijderen
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -327,7 +346,15 @@ watch(activeFilter, () => {
     @apply w-20 text-right;
 }
 
+.receipt-item-actions {
+    @apply flex gap-3 mt-3;
+}
+
+.view-original-btn {
+    @apply text-sm text-blue-600 hover:text-blue-800;
+}
+
 .delete-btn {
-    @apply text-sm text-red-500 hover:text-red-700 mt-3;
+    @apply text-sm text-red-500 hover:text-red-700;
 }
 </style>

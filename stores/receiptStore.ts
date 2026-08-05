@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { useReceiptOriginalStore } from '~/composables/useReceiptOriginalStore';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import type ProductCategoryEnum from '~/types/ProductCategoryEnum';
@@ -96,6 +97,7 @@ export const useReceiptStore = defineStore('receipt', {
         removeReceipt(receiptId: string): void {
             this.receipts = this.receipts.filter((r) => r.id !== receiptId);
             saveToStorage(this.receipts);
+            useReceiptOriginalStore().deleteOriginal(receiptId).catch(() => {});
         },
 
         updateReceipt(receiptId: string, updatedReceipt: ReceiptInterface): void {

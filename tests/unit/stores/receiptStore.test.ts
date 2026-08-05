@@ -5,6 +5,12 @@ import type ReceiptInterface from '~/types/ReceiptInterface';
 import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
+const deleteOriginal = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('~/composables/useReceiptOriginalStore', () => ({
+    useReceiptOriginalStore: vi.fn(() => ({ deleteOriginal })),
+}));
+
 const STORAGE_KEY = 'ah-planner-receipts';
 
 function createLocalStorageStub() {
@@ -46,6 +52,7 @@ describe('receiptStore', () => {
     beforeEach(() => {
         vi.stubGlobal('localStorage', createLocalStorageStub());
         setActivePinia(createPinia());
+        deleteOriginal.mockClear();
     });
 
     afterEach(() => {
@@ -111,6 +118,18 @@ describe('receiptStore', () => {
 
             // #then
             expect(storedReceipts().map((receipt) => receipt.id)).toEqual(['receipt-1']);
+        });
+
+        it('deletes the stored original for the removed receipt', () => {
+            // #given
+            const store = useReceiptStore();
+            store.receipts = [makeReceipt()];
+
+            // #when
+            store.removeReceipt('receipt-1');
+
+            // #then
+            expect(deleteOriginal).toHaveBeenCalledWith('receipt-1');
         });
     });
 
