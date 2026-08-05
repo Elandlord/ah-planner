@@ -108,6 +108,10 @@ const CATEGORY_KEYWORDS: Record<string, ProductCategoryEnum> = {
     wasmiddel: ProductCategoryEnum.huishouden,
 };
 
+const CATEGORY_KEYWORD_ENTRIES = Object.entries(CATEGORY_KEYWORDS).sort(
+    ([a], [b]) => b.length - a.length,
+);
+
 const TRAILING_SIZE_PATTERN = /\s+\d+([.,]\d+)?\s*(gram|gr|kg|ml|cl|ltr|stuks|st|g|l|x)$/;
 
 export function normalizeProductName(name: string): string {
@@ -130,7 +134,7 @@ function categorizeProduct(
         return override;
     }
 
-    for (const [keyword, category] of Object.entries(CATEGORY_KEYWORDS)) {
+    for (const [keyword, category] of CATEGORY_KEYWORD_ENTRIES) {
         if (normalizedName.includes(keyword)) {
             return category;
         }
