@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { scoreRecipe, rankRecipes } from '~/composables/useRecipeMatch';
+import { normalizeProductName } from '~/composables/useReceiptParser';
 import type RecipeInterface from '~/types/RecipeInterface';
 import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
@@ -83,6 +84,19 @@ describe('scoreRecipe', () => {
         const result = scoreRecipe(MOCK_RECIPE, purchasedNames, purchasedCategories);
 
         expect(result.score).toBe(4);
+    });
+
+    it('matches ingredients as substrings of prefixed purchased names', () => {
+        const purchasedNames = new Set([
+            normalizeProductName('AH Kipfilet'),
+            normalizeProductName('AH Melk LV'),
+        ]);
+        const purchasedCategories = new Set<ProductCategoryEnum>([]);
+
+        const result = scoreRecipe(MOCK_RECIPE, purchasedNames, purchasedCategories);
+
+        expect(result.matchedIngredients).toContain('melk');
+        expect(result.score).toBeGreaterThanOrEqual(3);
     });
 });
 

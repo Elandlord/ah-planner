@@ -1,3 +1,4 @@
+import { normalizeProductName } from '~/composables/useReceiptParser';
 import type RecipeInterface from '~/types/RecipeInterface';
 import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import type ProductCategoryEnum from '~/types/ProductCategoryEnum';
@@ -19,7 +20,8 @@ export function scoreRecipe(
     let score = 0;
 
     for (const ingredient of recipe.ingredients) {
-        const nameMatch = purchasedNames.has(ingredient.name.toLowerCase());
+        const normalizedIngredient = ingredient.name.toLowerCase();
+        const nameMatch = [...purchasedNames].some((name) => name.includes(normalizedIngredient));
         const categoryMatch = purchasedCategories.has(ingredient.category);
 
         if (nameMatch) {
@@ -40,7 +42,7 @@ export function rankRecipes(
     recipes: RecipeInterface[],
     items: ReceiptItemInterface[],
 ): RecipeScoreInterface[] {
-    const purchasedNames = new Set(items.map((i) => i.name.toLowerCase()));
+    const purchasedNames = new Set(items.map((i) => normalizeProductName(i.name)));
     const purchasedCategories = new Set(items.map((i) => i.category));
 
     return recipes
