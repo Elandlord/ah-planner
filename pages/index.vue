@@ -3,9 +3,11 @@ import type ReceiptInterface from '~/types/ReceiptInterface';
 import { useReceiptStore } from '~/stores/receiptStore';
 import { useCategoryOverrideStore } from '~/stores/categoryOverrideStore';
 import { useOcr } from '~/composables/useOcr';
+import { useReceiptOriginalStore } from '~/composables/useReceiptOriginalStore';
 
 const receiptStore = useReceiptStore();
 const categoryOverrideStore = useCategoryOverrideStore();
+const originalStore = useReceiptOriginalStore();
 const { isProcessing, progress, rawText, error, processImage, processPdf, processText } =
     useOcr(() => categoryOverrideStore.overrides);
 
@@ -22,6 +24,7 @@ async function processFile(file: File): Promise<void> {
     if (isPdfFile(file)) {
         const result = await processPdf(file);
         if (result) {
+            result.hasOriginal = await originalStore.saveOriginal(result.id, file);
             parsedReceipt.value = result;
         }
     } else {
@@ -29,6 +32,7 @@ async function processFile(file: File): Promise<void> {
         reader.onload = async () => {
             const result = await processImage(reader.result as string);
             if (result) {
+                result.hasOriginal = await originalStore.saveOriginal(result.id, file);
                 parsedReceipt.value = result;
             }
         };

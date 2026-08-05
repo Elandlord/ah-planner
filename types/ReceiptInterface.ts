@@ -6,6 +6,7 @@ interface ReceiptInterface {
     items: ReceiptItemInterface[];
     total: number;
     storeName: string;
+    hasOriginal?: boolean;
 }
 
 export type { ReceiptInterface as default };
