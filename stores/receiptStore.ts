@@ -68,6 +68,23 @@ export const useReceiptStore = defineStore('receipt', {
             }
             return categories;
         },
+
+        averagePriceByItem(): Record<string, number> {
+            const totals: Record<string, { sum: number; quantity: number }> = {};
+            for (const item of this.allItems) {
+                const key = item.name.toLowerCase();
+                const current = totals[key] ?? { sum: 0, quantity: 0 };
+                current.sum += item.price * item.quantity;
+                current.quantity += item.quantity;
+                totals[key] = current;
+            }
+
+            const averages: Record<string, number> = {};
+            for (const [name, { sum, quantity }] of Object.entries(totals)) {
+                averages[name] = sum / quantity;
+            }
+            return averages;
+        },
     },
 
     actions: {

@@ -353,6 +353,37 @@ describe('receiptStore', () => {
         });
     });
 
+    describe('averagePriceByItem', () => {
+        it('computes the quantity-weighted average price per lowercased item name', () => {
+            // #given
+            const store = useReceiptStore();
+
+            // #when
+            store.receipts = [
+                makeReceipt({
+                    items: [
+                        makeItem({ name: 'Melk', price: 1, quantity: 2 }),
+                        makeItem({ name: 'melk', price: 2.5, quantity: 1 }),
+                    ],
+                }),
+            ];
+
+            // #then
+            expect(store.averagePriceByItem).toEqual({ melk: (1 * 2 + 2.5 * 1) / 3 });
+        });
+
+        it('returns an empty record when there are no receipts', () => {
+            // #given
+            const store = useReceiptStore();
+
+            // #when
+            store.receipts = [];
+
+            // #then
+            expect(store.averagePriceByItem).toEqual({});
+        });
+    });
+
     describe('purchasedCategories', () => {
         it('collects the unique categories of every item', () => {
             // #given

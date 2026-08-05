@@ -544,6 +544,55 @@ describe('shoppingListStore', () => {
         });
     });
 
+    describe('estimatedPrices', () => {
+        it('exposes the average purchase price per lowercased item name', () => {
+            // #given
+            const store = useShoppingListStore();
+            seedPurchasedItems([makeItem({ name: 'Melk', price: 1.5, quantity: 2 })]);
+
+            // #then
+            expect(store.estimatedPrices).toEqual({ melk: 1.5 });
+        });
+    });
+
+    describe('estimatedTotal', () => {
+        it('sums the estimated price of every unchecked item', () => {
+            // #given
+            const store = useShoppingListStore();
+            seedPurchasedItems([
+                makeItem({ name: 'Melk', price: 1.5, quantity: 1 }),
+                makeItem({ name: 'Brood', price: 2.5, quantity: 1 }),
+            ]);
+            store.items = [
+                makeListItem({ name: 'Melk', checked: false }),
+                makeListItem({ name: 'Brood', checked: false }),
+            ];
+
+            // #then
+            expect(store.estimatedTotal).toBe(4);
+        });
+
+        it('excludes checked items from the total', () => {
+            // #given
+            const store = useShoppingListStore();
+            seedPurchasedItems([makeItem({ name: 'Melk', price: 1.5, quantity: 1 })]);
+            store.items = [makeListItem({ name: 'Melk', checked: true })];
+
+            // #then
+            expect(store.estimatedTotal).toBe(0);
+        });
+
+        it('ignores items without purchase history', () => {
+            // #given
+            const store = useShoppingListStore();
+            seedPurchasedItems([]);
+            store.items = [makeListItem({ name: 'Onbekend', checked: false })];
+
+            // #then
+            expect(store.estimatedTotal).toBe(0);
+        });
+    });
+
     describe('itemsByCategory', () => {
         it('groups the items by their category', () => {
             // #given
