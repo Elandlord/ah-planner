@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import type ShoppingListItemInterface from '~/types/ShoppingListItemInterface';
+import type ShoppingListItemSourceInterface from '~/types/ShoppingListItemSourceInterface';
 import { useReceiptStore } from '~/stores/receiptStore';
 import { useRecipeStore } from '~/stores/recipeStore';
 import { topEntries } from '~/composables/useItemFrequency';
@@ -128,9 +129,12 @@ export const useShoppingListStore = defineStore('shoppingList', {
             const purchasedNames = new Set(receiptStore.allItems.map((i) => i.name.toLowerCase()));
             const purchasedCategories = new Set(receiptStore.allItems.map((i) => i.category));
 
-            const missingByName = new Map<string, { category: ProductCategoryEnum; count: number }>();
+            const missingByName = new Map<
+                string,
+                { category: ProductCategoryEnum; count: number; sources: ShoppingListItemSourceInterface[] }
+            >();
 
-            for (const recipe of Object.values(recipeStore.weekPlanRecipes)) {
+            for (const [day, recipe] of Object.entries(recipeStore.weekPlanRecipes)) {
                 if (!recipe) {
                     continue;
                 }
@@ -144,16 +148,18 @@ export const useShoppingListStore = defineStore('shoppingList', {
                         continue;
                     }
 
+                    const source = { day, recipeName: recipe.name };
                     const existing = missingByName.get(name);
                     if (existing) {
                         existing.count += 1;
+                        existing.sources.push(source);
                     } else {
-                        missingByName.set(name, { category: ingredient.category, count: 1 });
+                        missingByName.set(name, { category: ingredient.category, count: 1, sources: [source] });
                     }
                 }
             }
 
-            for (const [name, { category, count }] of missingByName) {
+            for (const [name, { category, count, sources }] of missingByName) {
                 const existingItem = this.items.find(
                     (i) => i.name.toLowerCase() === name,
                 );
@@ -166,6 +172,7 @@ export const useShoppingListStore = defineStore('shoppingList', {
                     category,
                     checked: false,
                     frequency: count,
+                    sources,
                 });
             }
             saveToStorage(this.items);

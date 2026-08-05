@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import ShoppingListPage from '~/pages/shopping-list.vue';
@@ -149,6 +149,53 @@ describe('pages/shopping-list.vue', () => {
 
             // #then
             expect(wrapper.find('.item-price').text()).toContain('geen prijsdata');
+        });
+    });
+
+    describe('generate from week plan', () => {
+        it('calls generateFromWeekPlan when the button is clicked', async () => {
+            // #given
+            const store = useShoppingListStore();
+            const generateSpy = vi.spyOn(store, 'generateFromWeekPlan');
+            const wrapper = mount(ShoppingListPage);
+            const button = wrapper
+                .findAll('.action-btn')
+                .find((btn) => btn.text() === 'Genereer uit weekplan');
+
+            // #when
+            await button?.trigger('click');
+
+            // #then
+            expect(generateSpy).toHaveBeenCalledOnce();
+        });
+
+        it('shows which day and recipe a generated item came from', () => {
+            // #given
+            const store = useShoppingListStore();
+            store.items = [
+                makeListItem({
+                    name: 'Boerenkool',
+                    sources: [{ day: 'Maandag', recipeName: 'Stamppot' }],
+                }),
+            ];
+
+            // #when
+            const wrapper = mount(ShoppingListPage);
+
+            // #then
+            expect(wrapper.find('.item-sources').text()).toContain('Maandag (Stamppot)');
+        });
+
+        it('does not show the sources note for manually added items', () => {
+            // #given
+            const store = useShoppingListStore();
+            store.items = [makeListItem({ name: 'Melk' })];
+
+            // #when
+            const wrapper = mount(ShoppingListPage);
+
+            // #then
+            expect(wrapper.find('.item-sources').exists()).toBe(false);
         });
     });
 

@@ -66,6 +66,12 @@ function addItem(): void {
                 Genereer uit aankoopgeschiedenis
             </button>
             <button
+                class="action-btn"
+                @click="shoppingListStore.generateFromWeekPlan()"
+            >
+                Genereer uit weekplan
+            </button>
+            <button
                 v-if="shoppingListStore.checkedItems.length > 0"
                 class="action-btn-danger"
                 @click="shoppingListStore.clearChecked()"
@@ -110,7 +116,15 @@ function addItem(): void {
                         class="item-checkbox"
                         @change="shoppingListStore.toggleItem(item.name)"
                     >
-                    <span class="item-text">{{ item.name }}</span>
+                    <span class="item-text-group">
+                        <span class="item-text">{{ item.name }}</span>
+                        <span
+                            v-if="item.sources && item.sources.length > 0"
+                            class="item-sources"
+                        >
+                            Uit weekplan: {{ item.sources.map((source) => `${source.day} (${source.recipeName})`).join(', ') }}
+                        </span>
+                    </span>
                 </label>
                 <span class="item-price">
                     <template v-if="shoppingListStore.estimatedPrices[item.name.toLowerCase()] !== undefined">
@@ -208,6 +222,14 @@ function addItem(): void {
 
 .list-item--checked .item-text {
     @apply line-through;
+}
+
+.item-text-group {
+    @apply flex flex-col;
+}
+
+.item-sources {
+    @apply text-xs text-gray-400;
 }
 
 .item-price {
