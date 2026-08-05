@@ -15,6 +15,10 @@ export default defineConfig({
         ],
         globals: true,
         setupFiles: ['./tests/unit/setup/vue-auto-imports.ts'],
+        coverage: {
+            provider: 'v8',
+            reporter: ['text', 'html'],
+        },
     },
     resolve: {
         alias: {
