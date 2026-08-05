@@ -3,7 +3,9 @@ import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import ShoppingListPage from '~/pages/shopping-list.vue';
 import { useShoppingListStore } from '~/stores/shoppingListStore';
+import { useReceiptStore } from '~/stores/receiptStore';
 import type ShoppingListItemInterface from '~/types/ShoppingListItemInterface';
+import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 const EMPTY_STATE_TEXT = 'Je boodschappenlijst is leeg';
@@ -16,6 +18,18 @@ function makeListItem(
         category: ProductCategoryEnum.zuivel,
         checked: false,
         frequency: 3,
+        ...overrides,
+    };
+}
+
+function makeReceiptItem(
+    overrides: Partial<ReceiptItemInterface> = {},
+): ReceiptItemInterface {
+    return {
+        name: 'melk',
+        price: 1.5,
+        quantity: 1,
+        category: ProductCategoryEnum.zuivel,
         ...overrides,
     };
 }
@@ -77,6 +91,64 @@ describe('pages/shopping-list.vue', () => {
             // #then
             expect(store.items[0].checked).toBe(true);
             expect(wrapper.find('.list-item').classes()).toContain('list-item--checked');
+        });
+    });
+
+    describe('estimated cost', () => {
+        it('shows the estimated total for the unchecked items', () => {
+            // #given
+            const receiptStore = useReceiptStore();
+            receiptStore.receipts = [
+                {
+                    id: 'receipt-1',
+                    date: '2026-01-10',
+                    items: [makeReceiptItem({ name: 'melk', price: 1.5, quantity: 1 })],
+                    total: 1.5,
+                    storeName: 'Albert Heijn',
+                },
+            ];
+            const store = useShoppingListStore();
+            store.items = [makeListItem({ name: 'Melk', checked: false })];
+
+            // #when
+            const wrapper = mount(ShoppingListPage);
+
+            // #then
+            expect(wrapper.find('.estimated-total-value').text()).toContain('1.50');
+        });
+
+        it('shows the item price when purchase history exists', () => {
+            // #given
+            const receiptStore = useReceiptStore();
+            receiptStore.receipts = [
+                {
+                    id: 'receipt-1',
+                    date: '2026-01-10',
+                    items: [makeReceiptItem({ name: 'melk', price: 1.5, quantity: 1 })],
+                    total: 1.5,
+                    storeName: 'Albert Heijn',
+                },
+            ];
+            const store = useShoppingListStore();
+            store.items = [makeListItem({ name: 'Melk' })];
+
+            // #when
+            const wrapper = mount(ShoppingListPage);
+
+            // #then
+            expect(wrapper.find('.item-price').text()).toContain('1.50');
+        });
+
+        it('shows a no-price-data state for items without purchase history', () => {
+            // #given
+            const store = useShoppingListStore();
+            store.items = [makeListItem({ name: 'Onbekend' })];
+
+            // #when
+            const wrapper = mount(ShoppingListPage);
+
+            // #then
+            expect(wrapper.find('.item-price').text()).toContain('geen prijsdata');
         });
     });
 

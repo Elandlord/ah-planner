@@ -42,6 +42,18 @@ export const useShoppingListStore = defineStore('shoppingList', {
             }
             return grouped;
         },
+
+        estimatedPrices(): Record<string, number> {
+            const receiptStore = useReceiptStore();
+            return receiptStore.averagePriceByItem;
+        },
+
+        estimatedTotal(): number {
+            return this.uncheckedItems.reduce((sum, item) => {
+                const price = this.estimatedPrices[item.name.toLowerCase()];
+                return price !== undefined ? sum + price : sum;
+            }, 0);
+        },
     },
 
     actions: {

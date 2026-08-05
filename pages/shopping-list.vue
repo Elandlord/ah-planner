@@ -82,6 +82,14 @@ function addItem(): void {
         </div>
 
         <div
+            v-else
+            class="estimated-total"
+        >
+            <span class="estimated-total-label">Geschat totaal</span>
+            <span class="estimated-total-value">&euro;{{ shoppingListStore.estimatedTotal.toFixed(2) }}</span>
+        </div>
+
+        <div
             v-for="(items, category) in shoppingListStore.itemsByCategory"
             :key="category"
             class="category-group"
@@ -104,6 +112,14 @@ function addItem(): void {
                     >
                     <span class="item-text">{{ item.name }}</span>
                 </label>
+                <span class="item-price">
+                    <template v-if="shoppingListStore.estimatedPrices[item.name.toLowerCase()] !== undefined">
+                        &euro;{{ shoppingListStore.estimatedPrices[item.name.toLowerCase()].toFixed(2) }}
+                    </template>
+                    <template v-else>
+                        geen prijsdata
+                    </template>
+                </span>
                 <span class="item-freq">{{ item.frequency }}x gekocht</span>
                 <button
                     class="item-remove"
@@ -154,6 +170,18 @@ function addItem(): void {
     @apply text-gray-500 text-center py-8;
 }
 
+.estimated-total {
+    @apply flex justify-between items-center bg-white rounded-lg shadow p-3 mb-4;
+}
+
+.estimated-total-label {
+    @apply text-sm text-gray-500;
+}
+
+.estimated-total-value {
+    @apply text-xl font-bold text-blue-600;
+}
+
 .category-group {
     @apply mb-4;
 }
@@ -180,6 +208,10 @@ function addItem(): void {
 
 .list-item--checked .item-text {
     @apply line-through;
+}
+
+.item-price {
+    @apply text-xs text-gray-400 whitespace-nowrap;
 }
 
 .item-freq {
