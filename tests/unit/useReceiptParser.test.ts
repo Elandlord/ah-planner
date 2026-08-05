@@ -364,3 +364,23 @@ describe('category overrides', () => {
         expect(receipt.items[0].category).toBe(ProductCategoryEnum.snacks);
     });
 });
+
+describe('keyword collisions', () => {
+    it('matches the longer, more specific keyword instead of a shorter contained one', () => {
+        // #given
+        // #when
+        const items = parseReceiptText('AH Kokosmelk  2.19');
+
+        // #then
+        expect(items[0].category).toBe(ProductCategoryEnum.conserven);
+    });
+
+    it('matches "bonen" instead of the shorter "ui" contained in "bruine"', () => {
+        // #given
+        // #when
+        const items = parseReceiptText('Bruine bonen  1.79');
+
+        // #then
+        expect(items[0].category).toBe(ProductCategoryEnum.conserven);
+    });
+});
