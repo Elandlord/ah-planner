@@ -36,6 +36,10 @@ async function processFile(file: File): Promise<void> {
                 parsedReceipt.value = result;
             }
         };
+        reader.onerror = () => {
+            error.value = 'Kon bestand niet lezen.';
+            processNextInQueue();
+        };
         reader.readAsDataURL(file);
     }
 }
