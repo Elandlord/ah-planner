@@ -414,6 +414,22 @@ describe('shoppingListStore', () => {
             expect(store.items).toEqual([]);
         });
 
+        it('matches purchased items with a size suffix by normalized name', () => {
+            // #given
+            const store = useShoppingListStore();
+            seedPurchasedItems([makeItem({ name: 'Melk 1L' })]);
+            seedWeekPlan(
+                { monday: 'recipe-1' },
+                [makeRecipe({ id: 'recipe-1', ingredients: [makeIngredient({ name: 'melk' })] })],
+            );
+
+            // #when
+            store.generateFromWeekPlan();
+
+            // #then
+            expect(store.items).toEqual([]);
+        });
+
         it('sums the frequency when an ingredient repeats across assigned recipes', () => {
             // #given
             const store = useShoppingListStore();
