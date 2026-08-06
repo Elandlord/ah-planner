@@ -14,7 +14,11 @@ function loadFromStorage(): ShoppingListItemInterface[] {
     if (!stored) {
         return [];
     }
-    return JSON.parse(stored) as ShoppingListItemInterface[];
+    try {
+        return JSON.parse(stored) as ShoppingListItemInterface[];
+    } catch {
+        return [];
+    }
 }
 
 function saveToStorage(items: ShoppingListItemInterface[]): void {

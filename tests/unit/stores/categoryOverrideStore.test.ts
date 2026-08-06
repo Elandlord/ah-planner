@@ -45,6 +45,18 @@ describe('categoryOverrideStore', () => {
             expect(overrides).toEqual({});
         });
 
+        it('starts empty when the stored overrides are corrupted JSON', () => {
+            // #given
+            vi.stubGlobal('localStorage', createLocalStorageStub('not-json{'));
+            setActivePinia(createPinia());
+
+            // #when
+            const store = useCategoryOverrideStore();
+
+            // #then
+            expect(store.overrides).toEqual({});
+        });
+
         it('restores overrides from local storage', () => {
             // #given
             vi.stubGlobal(

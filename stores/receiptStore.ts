@@ -11,7 +11,11 @@ function loadFromStorage(): ReceiptInterface[] {
     if (!stored) {
         return [];
     }
-    return JSON.parse(stored) as ReceiptInterface[];
+    try {
+        return JSON.parse(stored) as ReceiptInterface[];
+    } catch {
+        return [];
+    }
 }
 
 function saveToStorage(receipts: ReceiptInterface[]): void {

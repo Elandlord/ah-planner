@@ -10,7 +10,11 @@ function loadFromStorage(): CategoryOverridesInterface {
     if (!stored) {
         return {};
     }
-    return JSON.parse(stored) as CategoryOverridesInterface;
+    try {
+        return JSON.parse(stored) as CategoryOverridesInterface;
+    } catch {
+        return {};
+    }
 }
 
 function saveToStorage(overrides: CategoryOverridesInterface): void {

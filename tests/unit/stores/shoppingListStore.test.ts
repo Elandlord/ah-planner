@@ -624,6 +624,20 @@ describe('shoppingListStore', () => {
         });
     });
 
+    describe('state', () => {
+        it('starts empty when the stored items are corrupted JSON', () => {
+            // #given
+            vi.stubGlobal('localStorage', createLocalStorageStub());
+            localStorage.setItem(STORAGE_KEY, 'not-json{');
+
+            // #when
+            const store = useShoppingListStore();
+
+            // #then
+            expect(store.items).toEqual([]);
+        });
+    });
+
     describe('itemsByCategory', () => {
         it('groups the items by their category', () => {
             // #given
