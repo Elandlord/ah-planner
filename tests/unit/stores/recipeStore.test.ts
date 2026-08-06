@@ -83,6 +83,44 @@ describe('recipeStore', () => {
         vi.unstubAllGlobals();
     });
 
+    describe('state', () => {
+        it('starts empty when the stored user recipes are corrupted JSON', () => {
+            // #given
+            vi.stubGlobal('localStorage', createLocalStorageStub());
+            localStorage.setItem(USER_RECIPES_KEY, 'not-json{');
+
+            // #when
+            const store = useRecipeStore();
+
+            // #then
+            expect(store.userRecipes).toEqual([]);
+        });
+
+        it('starts empty when the stored saved recipe ids are corrupted JSON', () => {
+            // #given
+            vi.stubGlobal('localStorage', createLocalStorageStub());
+            localStorage.setItem(SAVED_RECIPES_KEY, 'not-json{');
+
+            // #when
+            const store = useRecipeStore();
+
+            // #then
+            expect(store.savedRecipeIds).toEqual([]);
+        });
+
+        it('starts empty when the stored week plan is corrupted JSON', () => {
+            // #given
+            vi.stubGlobal('localStorage', createLocalStorageStub());
+            localStorage.setItem(WEEK_PLAN_KEY, 'not-json{');
+
+            // #when
+            const store = useRecipeStore();
+
+            // #then
+            expect(store.weekPlan).toEqual({});
+        });
+    });
+
     describe('suggestedRecipes', () => {
         it('scores an ingredient matched by name higher than one matched by category', () => {
             // #given

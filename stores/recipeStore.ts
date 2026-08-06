@@ -6,6 +6,18 @@ import { recipes } from '~/data/recipes';
 
 const USER_RECIPE_ID_PREFIX = 'user-';
 
+function parseStored<T>(key: string, fallback: T): T {
+    const stored = localStorage.getItem(key);
+    if (!stored) {
+        return fallback;
+    }
+    try {
+        return JSON.parse(stored) as T;
+    } catch {
+        return fallback;
+    }
+}
+
 function nextUserRecipeId(existingRecipes: RecipeInterface[]): string {
     const usedIds = new Set(existingRecipes.map((r) => r.id));
     let index = 1;
@@ -18,15 +30,9 @@ function nextUserRecipeId(existingRecipes: RecipeInterface[]): string {
 export const useRecipeStore = defineStore('recipe', {
     state: () => ({
         allRecipes: recipes as RecipeInterface[],
-        userRecipes: JSON.parse(
-            localStorage.getItem('ah-planner-user-recipes') ?? '[]',
-        ) as RecipeInterface[],
-        savedRecipeIds: JSON.parse(
-            localStorage.getItem('ah-planner-saved-recipes') ?? '[]',
-        ) as string[],
-        weekPlan: JSON.parse(
-            localStorage.getItem('ah-planner-week-plan') ?? '{}',
-        ) as Record<string, string>,
+        userRecipes: parseStored<RecipeInterface[]>('ah-planner-user-recipes', []),
+        savedRecipeIds: parseStored<string[]>('ah-planner-saved-recipes', []),
+        weekPlan: parseStored<Record<string, string>>('ah-planner-week-plan', {}),
     }),
 
     getters: {

@@ -403,6 +403,20 @@ describe('receiptStore', () => {
         });
     });
 
+    describe('state', () => {
+        it('starts empty when the stored receipts are corrupted JSON', () => {
+            // #given
+            vi.stubGlobal('localStorage', createLocalStorageStub());
+            localStorage.setItem(STORAGE_KEY, 'not-json{');
+
+            // #when
+            const store = useReceiptStore();
+
+            // #then
+            expect(store.receipts).toEqual([]);
+        });
+    });
+
     describe('purchasedCategories', () => {
         it('collects the unique categories of every item', () => {
             // #given
