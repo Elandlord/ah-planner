@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useDataBackup } from '~/composables/useDataBackup';
+import { useCategoryOverrideStore } from '~/stores/categoryOverrideStore';
 import { useReceiptStore } from '~/stores/receiptStore';
 import { useRecipeStore } from '~/stores/recipeStore';
 import { useShoppingListStore } from '~/stores/shoppingListStore';
+import type CategoryOverridesInterface from '~/types/CategoryOverridesInterface';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
+import type RecipeInterface from '~/types/RecipeInterface';
 import type ShoppingListItemInterface from '~/types/ShoppingListItemInterface';
 import type BackupInterface from '~/types/BackupInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
@@ -61,6 +64,29 @@ function makeListItem(
     };
 }
 
+function makeRecipe(overrides: Partial<RecipeInterface> = {}): RecipeInterface {
+    return {
+        id: 'user-1',
+        name: 'Pannenkoeken',
+        description: 'Nederlandse pannenkoeken.',
+        servings: 4,
+        prepTimeMinutes: 20,
+        ingredients: [],
+        instructions: ['Bak de pannenkoeken.'],
+        tags: ['klassiek'],
+        ...overrides,
+    };
+}
+
+function makeCategoryOverrides(
+    overrides: Partial<CategoryOverridesInterface> = {},
+): CategoryOverridesInterface {
+    return {
+        'ah zuivelspr': ProductCategoryEnum.zuivel,
+        ...overrides,
+    };
+}
+
 function makeBackup(overrides: Partial<BackupInterface> = {}): BackupInterface {
     return {
         version: 1,
@@ -69,6 +95,8 @@ function makeBackup(overrides: Partial<BackupInterface> = {}): BackupInterface {
         savedRecipeIds: ['recipe-1'],
         weekPlan: { woensdag: 'recipe-1' },
         shoppingList: [makeListItem()],
+        userRecipes: [makeRecipe()],
+        categoryOverrides: makeCategoryOverrides(),
         ...overrides,
     };
 }
@@ -90,7 +118,9 @@ describe('useDataBackup', () => {
             useReceiptStore().receipts = [makeReceipt()];
             useRecipeStore().savedRecipeIds = ['recipe-1'];
             useRecipeStore().weekPlan = { woensdag: 'recipe-1' };
+            useRecipeStore().userRecipes = [makeRecipe()];
             useShoppingListStore().items = [makeListItem()];
+            useCategoryOverrideStore().overrides = makeCategoryOverrides();
             const { exportBackup } = useDataBackup();
 
             // #when
@@ -107,6 +137,8 @@ describe('useDataBackup', () => {
                 savedRecipeIds: ['recipe-1'],
                 weekPlan: { woensdag: 'recipe-1' },
                 shoppingList: [makeListItem()],
+                userRecipes: [makeRecipe()],
+                categoryOverrides: makeCategoryOverrides(),
             });
             expect(filename).toBe(`ah-planner-backup-${parsed.exportedAt.slice(0, 10)}.json`);
             expect(mimeType).toBe('application/json');
@@ -126,7 +158,9 @@ describe('useDataBackup', () => {
             expect(useReceiptStore().receipts).toEqual(backup.receipts);
             expect(useRecipeStore().savedRecipeIds).toEqual(backup.savedRecipeIds);
             expect(useRecipeStore().weekPlan).toEqual(backup.weekPlan);
+            expect(useRecipeStore().userRecipes).toEqual(backup.userRecipes);
             expect(useShoppingListStore().items).toEqual(backup.shoppingList);
+            expect(useCategoryOverrideStore().overrides).toEqual(backup.categoryOverrides);
         });
 
         it('throws when the input is not valid JSON', () => {

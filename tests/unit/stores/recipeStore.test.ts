@@ -343,11 +343,12 @@ describe('recipeStore', () => {
     });
 
     describe('exportData', () => {
-        it('returns the saved recipe ids and the week plan', () => {
+        it('returns the saved recipe ids, the week plan and the user recipes', () => {
             // #given
             const store = useRecipeStore();
             store.savedRecipeIds = ['recipe-1'];
             store.weekPlan = { woensdag: 'recipe-1' };
+            store.userRecipes = [makeRecipe({ id: 'user-1' })];
 
             // #when
             const exported = store.exportData();
@@ -356,23 +357,30 @@ describe('recipeStore', () => {
             expect(exported).toEqual({
                 savedRecipeIds: ['recipe-1'],
                 weekPlan: { woensdag: 'recipe-1' },
+                userRecipes: [makeRecipe({ id: 'user-1' })],
             });
         });
     });
 
     describe('importData', () => {
-        it('replaces the saved recipe ids and the week plan', () => {
+        it('replaces the saved recipe ids, the week plan and the user recipes', () => {
             // #given
             const store = useRecipeStore();
             store.savedRecipeIds = ['recipe-1'];
             store.weekPlan = { woensdag: 'recipe-1' };
+            store.userRecipes = [makeRecipe({ id: 'user-1' })];
 
             // #when
-            store.importData({ savedRecipeIds: ['recipe-2'], weekPlan: { dinsdag: 'recipe-2' } });
+            store.importData({
+                savedRecipeIds: ['recipe-2'],
+                weekPlan: { dinsdag: 'recipe-2' },
+                userRecipes: [makeRecipe({ id: 'user-2' })],
+            });
 
             // #then
             expect(store.savedRecipeIds).toEqual(['recipe-2']);
             expect(store.weekPlan).toEqual({ dinsdag: 'recipe-2' });
+            expect(store.userRecipes).toEqual([makeRecipe({ id: 'user-2' })]);
         });
 
         it('persists the imported data to storage', () => {
@@ -380,12 +388,19 @@ describe('recipeStore', () => {
             const store = useRecipeStore();
 
             // #when
-            store.importData({ savedRecipeIds: ['recipe-2'], weekPlan: { dinsdag: 'recipe-2' } });
+            store.importData({
+                savedRecipeIds: ['recipe-2'],
+                weekPlan: { dinsdag: 'recipe-2' },
+                userRecipes: [makeRecipe({ id: 'user-2' })],
+            });
 
             // #then
             expect(localStorage.getItem(SAVED_RECIPES_KEY)).toBe(JSON.stringify(['recipe-2']));
             expect(localStorage.getItem(WEEK_PLAN_KEY)).toBe(
                 JSON.stringify({ dinsdag: 'recipe-2' }),
+            );
+            expect(localStorage.getItem(USER_RECIPES_KEY)).toBe(
+                JSON.stringify([makeRecipe({ id: 'user-2' })]),
             );
         });
     });

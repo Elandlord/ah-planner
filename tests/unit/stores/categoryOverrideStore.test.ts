@@ -120,6 +120,31 @@ describe('categoryOverrideStore', () => {
         });
     });
 
+    describe('importData', () => {
+        it('replaces the overrides', () => {
+            // #given
+            const store = useCategoryOverrideStore();
+            store.setOverride('AH Kokosmelk', ProductCategoryEnum.zuivel);
+
+            // #when
+            store.importData({ 'ah zuivelspr': ProductCategoryEnum.zuivel });
+
+            // #then
+            expect(store.overrides).toEqual({ 'ah zuivelspr': ProductCategoryEnum.zuivel });
+        });
+
+        it('persists the imported overrides to local storage', () => {
+            // #given
+            const store = useCategoryOverrideStore();
+
+            // #when
+            store.importData({ 'ah zuivelspr': ProductCategoryEnum.zuivel });
+
+            // #then
+            expect(storedOverrides()).toEqual({ 'ah zuivelspr': ProductCategoryEnum.zuivel });
+        });
+    });
+
     describe('overrideCount', () => {
         it('counts the stored corrections', () => {
             // #given

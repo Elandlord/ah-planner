@@ -1,4 +1,5 @@
 import type BackupInterface from '~/types/BackupInterface';
+import { useCategoryOverrideStore } from '~/stores/categoryOverrideStore';
 import { useReceiptStore } from '~/stores/receiptStore';
 import { useRecipeStore } from '~/stores/recipeStore';
 import { useShoppingListStore } from '~/stores/shoppingListStore';
@@ -17,7 +18,10 @@ function isValidBackup(value: unknown): value is BackupInterface {
         Array.isArray(backup.savedRecipeIds) &&
         typeof backup.weekPlan === 'object' &&
         backup.weekPlan !== null &&
-        Array.isArray(backup.shoppingList)
+        Array.isArray(backup.shoppingList) &&
+        Array.isArray(backup.userRecipes) &&
+        typeof backup.categoryOverrides === 'object' &&
+        backup.categoryOverrides !== null
     );
 }
 
@@ -25,7 +29,8 @@ function createBackup(): BackupInterface {
     const receiptStore = useReceiptStore();
     const recipeStore = useRecipeStore();
     const shoppingListStore = useShoppingListStore();
-    const { savedRecipeIds, weekPlan } = recipeStore.exportData();
+    const categoryOverrideStore = useCategoryOverrideStore();
+    const { savedRecipeIds, weekPlan, userRecipes } = recipeStore.exportData();
 
     return {
         version: BACKUP_VERSION,
@@ -34,6 +39,8 @@ function createBackup(): BackupInterface {
         savedRecipeIds,
         weekPlan,
         shoppingList: shoppingListStore.exportData(),
+        userRecipes,
+        categoryOverrides: categoryOverrideStore.overrides,
     };
 }
 
@@ -41,13 +48,16 @@ function restoreBackup(backup: BackupInterface): void {
     const receiptStore = useReceiptStore();
     const recipeStore = useRecipeStore();
     const shoppingListStore = useShoppingListStore();
+    const categoryOverrideStore = useCategoryOverrideStore();
 
     receiptStore.importData(backup.receipts);
     recipeStore.importData({
         savedRecipeIds: backup.savedRecipeIds,
         weekPlan: backup.weekPlan,
+        userRecipes: backup.userRecipes,
     });
     shoppingListStore.importData(backup.shoppingList);
+    categoryOverrideStore.importData(backup.categoryOverrides);
 }
 
 export function useDataBackup() {
