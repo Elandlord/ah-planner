@@ -119,6 +119,19 @@ describe('recipeStore', () => {
             // #then
             expect(store.weekPlan).toEqual({});
         });
+
+        it('migrates a legacy flat day-to-recipe week plan into the current week', () => {
+            // #given
+            vi.stubGlobal('localStorage', createLocalStorageStub());
+            localStorage.setItem(WEEK_PLAN_KEY, JSON.stringify({ woensdag: 'recipe-1' }));
+
+            // #when
+            const store = useRecipeStore();
+
+            // #then
+            expect(store.weekPlan).toEqual({ woensdag: 'recipe-1' });
+            expect(store.weekPlans).toEqual({ [store.currentWeekStart]: { woensdag: 'recipe-1' } });
+        });
     });
 
     describe('suggestedRecipes', () => {
@@ -282,7 +295,7 @@ describe('recipeStore', () => {
             store.allRecipes = [makeRecipe(), makeRecipe({ id: 'recipe-2' })];
 
             // #when
-            store.weekPlan = { maandag: 'recipe-2', dinsdag: 'recipe-1' };
+            store.weekPlans[store.currentWeekStart] = { maandag: 'recipe-2', dinsdag: 'recipe-1' };
 
             // #then
             expect(store.weekPlanRecipes).toEqual({
@@ -297,7 +310,7 @@ describe('recipeStore', () => {
             store.allRecipes = [makeRecipe()];
 
             // #when
-            store.weekPlan = { maandag: 'missing' };
+            store.weekPlans[store.currentWeekStart] = { maandag: 'missing' };
 
             // #then
             expect(store.weekPlanRecipes.maandag).toBeUndefined();
@@ -319,7 +332,7 @@ describe('recipeStore', () => {
         it('replaces the recipe already assigned to that day', () => {
             // #given
             const store = useRecipeStore();
-            store.weekPlan = { woensdag: 'recipe-1' };
+            store.weekPlans[store.currentWeekStart] = { woensdag: 'recipe-1' };
 
             // #when
             store.assignToDay('woensdag', 'recipe-2');
@@ -337,17 +350,17 @@ describe('recipeStore', () => {
 
             // #then
             expect(localStorage.getItem(WEEK_PLAN_KEY)).toBe(
-                JSON.stringify({ woensdag: 'recipe-1' }),
+                JSON.stringify({ [store.currentWeekStart]: { woensdag: 'recipe-1' } }),
             );
         });
     });
 
     describe('exportData', () => {
-        it('returns the saved recipe ids and the week plan', () => {
+        it('returns the saved recipe ids and the week plans', () => {
             // #given
             const store = useRecipeStore();
             store.savedRecipeIds = ['recipe-1'];
-            store.weekPlan = { woensdag: 'recipe-1' };
+            store.weekPlans[store.currentWeekStart] = { woensdag: 'recipe-1' };
 
             // #when
             const exported = store.exportData();
@@ -355,24 +368,27 @@ describe('recipeStore', () => {
             // #then
             expect(exported).toEqual({
                 savedRecipeIds: ['recipe-1'],
-                weekPlan: { woensdag: 'recipe-1' },
+                weekPlans: { [store.currentWeekStart]: { woensdag: 'recipe-1' } },
             });
         });
     });
 
     describe('importData', () => {
-        it('replaces the saved recipe ids and the week plan', () => {
+        it('replaces the saved recipe ids and the week plans', () => {
             // #given
             const store = useRecipeStore();
             store.savedRecipeIds = ['recipe-1'];
-            store.weekPlan = { woensdag: 'recipe-1' };
+            store.weekPlans[store.currentWeekStart] = { woensdag: 'recipe-1' };
 
             // #when
-            store.importData({ savedRecipeIds: ['recipe-2'], weekPlan: { dinsdag: 'recipe-2' } });
+            store.importData({
+                savedRecipeIds: ['recipe-2'],
+                weekPlans: { '2026-01-05': { dinsdag: 'recipe-2' } },
+            });
 
             // #then
             expect(store.savedRecipeIds).toEqual(['recipe-2']);
-            expect(store.weekPlan).toEqual({ dinsdag: 'recipe-2' });
+            expect(store.weekPlans).toEqual({ '2026-01-05': { dinsdag: 'recipe-2' } });
         });
 
         it('persists the imported data to storage', () => {
@@ -380,12 +396,15 @@ describe('recipeStore', () => {
             const store = useRecipeStore();
 
             // #when
-            store.importData({ savedRecipeIds: ['recipe-2'], weekPlan: { dinsdag: 'recipe-2' } });
+            store.importData({
+                savedRecipeIds: ['recipe-2'],
+                weekPlans: { '2026-01-05': { dinsdag: 'recipe-2' } },
+            });
 
             // #then
             expect(localStorage.getItem(SAVED_RECIPES_KEY)).toBe(JSON.stringify(['recipe-2']));
             expect(localStorage.getItem(WEEK_PLAN_KEY)).toBe(
-                JSON.stringify({ dinsdag: 'recipe-2' }),
+                JSON.stringify({ '2026-01-05': { dinsdag: 'recipe-2' } }),
             );
         });
     });
@@ -394,7 +413,7 @@ describe('recipeStore', () => {
         it('removes the recipe assigned to the given day', () => {
             // #given
             const store = useRecipeStore();
-            store.weekPlan = { woensdag: 'recipe-1', donderdag: 'recipe-2' };
+            store.weekPlans[store.currentWeekStart] = { woensdag: 'recipe-1', donderdag: 'recipe-2' };
 
             // #when
             store.removeFromDay('woensdag');
@@ -406,13 +425,46 @@ describe('recipeStore', () => {
         it('persists the week plan to storage', () => {
             // #given
             const store = useRecipeStore();
-            store.weekPlan = { woensdag: 'recipe-1' };
+            store.weekPlans[store.currentWeekStart] = { woensdag: 'recipe-1' };
 
             // #when
             store.removeFromDay('woensdag');
 
             // #then
-            expect(localStorage.getItem(WEEK_PLAN_KEY)).toBe(JSON.stringify({}));
+            expect(localStorage.getItem(WEEK_PLAN_KEY)).toBe(
+                JSON.stringify({ [store.currentWeekStart]: {} }),
+            );
+        });
+    });
+
+    describe('deleteRecipe', () => {
+        it('removes the recipe from every planned week, not just the current one', () => {
+            // #given
+            const store = useRecipeStore();
+            store.userRecipes = [makeRecipe({ id: 'recipe-1' })];
+            store.weekPlans = {
+                [store.currentWeekStart]: { woensdag: 'recipe-1' },
+                '2026-01-05': { maandag: 'recipe-1', dinsdag: 'recipe-2' },
+            };
+
+            // #when
+            store.deleteRecipe('recipe-1');
+
+            // #then
+            expect(store.weekPlans).toEqual({
+                [store.currentWeekStart]: {},
+                '2026-01-05': { dinsdag: 'recipe-2' },
+            });
+        });
+    });
+
+    describe('currentWeekStart', () => {
+        it('defaults to the Monday of the current week', () => {
+            // #given / #when
+            const store = useRecipeStore();
+
+            // #then
+            expect(store.currentWeekStart).toMatch(/^\d{4}-\d{2}-\d{2}$/);
         });
     });
 });

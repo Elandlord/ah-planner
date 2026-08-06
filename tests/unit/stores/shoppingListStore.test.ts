@@ -89,7 +89,7 @@ function seedWeekPlan(weekPlan: Record<string, string>, recipes: RecipeInterface
     const recipeStore = useRecipeStore();
     recipeStore.allRecipes = [];
     recipeStore.userRecipes = recipes;
-    recipeStore.weekPlan = weekPlan;
+    recipeStore.weekPlans[recipeStore.currentWeekStart] = weekPlan;
 }
 
 function storedItems(): ShoppingListItemInterface[] {

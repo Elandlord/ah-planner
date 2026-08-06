@@ -1,38 +1,43 @@
 import type BackupInterface from '~/types/BackupInterface';
 import { useReceiptStore } from '~/stores/receiptStore';
-import { useRecipeStore } from '~/stores/recipeStore';
+import { getWeekStart, useRecipeStore } from '~/stores/recipeStore';
 import { useShoppingListStore } from '~/stores/shoppingListStore';
 import { downloadFile } from '~/composables/useReceiptExport';
 
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 
 function isValidBackup(value: unknown): value is BackupInterface {
     if (typeof value !== 'object' || value === null) {
         return false;
     }
     const backup = value as Record<string, unknown>;
-    return (
-        backup.version === BACKUP_VERSION &&
-        Array.isArray(backup.receipts) &&
-        Array.isArray(backup.savedRecipeIds) &&
-        typeof backup.weekPlan === 'object' &&
-        backup.weekPlan !== null &&
-        Array.isArray(backup.shoppingList)
-    );
+    if (
+        !Array.isArray(backup.receipts) ||
+        !Array.isArray(backup.savedRecipeIds) ||
+        !Array.isArray(backup.shoppingList)
+    ) {
+        return false;
+    }
+
+    if (backup.version === 1) {
+        return typeof backup.weekPlan === 'object' && backup.weekPlan !== null;
+    }
+
+    return backup.version === 2 && typeof backup.weekPlans === 'object' && backup.weekPlans !== null;
 }
 
 function createBackup(): BackupInterface {
     const receiptStore = useReceiptStore();
     const recipeStore = useRecipeStore();
     const shoppingListStore = useShoppingListStore();
-    const { savedRecipeIds, weekPlan } = recipeStore.exportData();
+    const { savedRecipeIds, weekPlans } = recipeStore.exportData();
 
     return {
         version: BACKUP_VERSION,
         exportedAt: new Date().toISOString(),
         receipts: receiptStore.exportData(),
         savedRecipeIds,
-        weekPlan,
+        weekPlans,
         shoppingList: shoppingListStore.exportData(),
     };
 }
@@ -42,10 +47,13 @@ function restoreBackup(backup: BackupInterface): void {
     const recipeStore = useRecipeStore();
     const shoppingListStore = useShoppingListStore();
 
+    const weekPlans =
+        backup.version === 1 ? { [getWeekStart(new Date())]: backup.weekPlan } : backup.weekPlans;
+
     receiptStore.importData(backup.receipts);
     recipeStore.importData({
         savedRecipeIds: backup.savedRecipeIds,
-        weekPlan: backup.weekPlan,
+        weekPlans,
     });
     shoppingListStore.importData(backup.shoppingList);
 }

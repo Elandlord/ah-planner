@@ -63,14 +63,14 @@ function makeListItem(
 
 function makeBackup(overrides: Partial<BackupInterface> = {}): BackupInterface {
     return {
-        version: 1,
+        version: 2,
         exportedAt: '2026-01-10T00:00:00.000Z',
         receipts: [makeReceipt()],
         savedRecipeIds: ['recipe-1'],
-        weekPlan: { woensdag: 'recipe-1' },
+        weekPlans: { '2026-01-05': { woensdag: 'recipe-1' } },
         shoppingList: [makeListItem()],
         ...overrides,
-    };
+    } as BackupInterface;
 }
 
 describe('useDataBackup', () => {
@@ -87,9 +87,10 @@ describe('useDataBackup', () => {
     describe('exportBackup', () => {
         it('downloads a JSON file containing every store', () => {
             // #given
+            const recipeStore = useRecipeStore();
             useReceiptStore().receipts = [makeReceipt()];
-            useRecipeStore().savedRecipeIds = ['recipe-1'];
-            useRecipeStore().weekPlan = { woensdag: 'recipe-1' };
+            recipeStore.savedRecipeIds = ['recipe-1'];
+            recipeStore.weekPlans[recipeStore.currentWeekStart] = { woensdag: 'recipe-1' };
             useShoppingListStore().items = [makeListItem()];
             const { exportBackup } = useDataBackup();
 
@@ -101,11 +102,11 @@ describe('useDataBackup', () => {
             const [content, filename, mimeType] = downloadFileMock.mock.calls[0];
             const parsed = JSON.parse(content) as BackupInterface;
             expect(parsed).toEqual({
-                version: 1,
+                version: 2,
                 exportedAt: parsed.exportedAt,
                 receipts: [makeReceipt()],
                 savedRecipeIds: ['recipe-1'],
-                weekPlan: { woensdag: 'recipe-1' },
+                weekPlans: { [recipeStore.currentWeekStart]: { woensdag: 'recipe-1' } },
                 shoppingList: [makeListItem()],
             });
             expect(filename).toBe(`ah-planner-backup-${parsed.exportedAt.slice(0, 10)}.json`);
@@ -123,10 +124,30 @@ describe('useDataBackup', () => {
             importBackup(JSON.stringify(backup));
 
             // #then
+            const backupV2 = backup as Extract<BackupInterface, { version: 2 }>;
             expect(useReceiptStore().receipts).toEqual(backup.receipts);
             expect(useRecipeStore().savedRecipeIds).toEqual(backup.savedRecipeIds);
-            expect(useRecipeStore().weekPlan).toEqual(backup.weekPlan);
+            expect(useRecipeStore().weekPlans).toEqual(backupV2.weekPlans);
             expect(useShoppingListStore().items).toEqual(backup.shoppingList);
+        });
+
+        it('migrates a legacy version 1 backup into the current week', () => {
+            // #given
+            const { importBackup } = useDataBackup();
+            const backup = makeBackup({
+                version: 1,
+                weekPlan: { woensdag: 'recipe-1' },
+            } as Partial<BackupInterface>);
+            delete (backup as Record<string, unknown>).weekPlans;
+
+            // #when
+            importBackup(JSON.stringify(backup));
+
+            // #then
+            const recipeStore = useRecipeStore();
+            expect(recipeStore.weekPlans).toEqual({
+                [recipeStore.currentWeekStart]: { woensdag: 'recipe-1' },
+            });
         });
 
         it('throws when the input is not valid JSON', () => {
@@ -142,7 +163,7 @@ describe('useDataBackup', () => {
         it('throws when the version is missing or unsupported', () => {
             // #given
             const { importBackup } = useDataBackup();
-            const backup = { ...makeBackup(), version: 2 };
+            const backup = { ...makeBackup(), version: 3 };
 
             // #when / #then
             expect(() => importBackup(JSON.stringify(backup))).toThrow(
