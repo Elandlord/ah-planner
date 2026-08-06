@@ -39,5 +39,10 @@ export const useCategoryOverrideStore = defineStore('categoryOverride', {
             this.overrides[key] = category;
             saveToStorage(this.overrides);
         },
+
+        importData(overrides: CategoryOverridesInterface): void {
+            this.overrides = overrides;
+            saveToStorage(this.overrides);
+        },
     },
 });
