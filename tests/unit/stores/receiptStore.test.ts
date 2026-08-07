@@ -247,6 +247,40 @@ describe('receiptStore', () => {
         });
     });
 
+    describe('recentItems', () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+            vi.setSystemTime(new Date('2026-01-20T12:00:00Z'));
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('only includes items from receipts within the last 14 days', () => {
+            // #given
+            const store = useReceiptStore();
+            store.receipts = [
+                makeReceipt({
+                    id: 'receipt-recent',
+                    date: '2026-01-10',
+                    items: [makeItem({ name: 'Melk' })],
+                }),
+                makeReceipt({
+                    id: 'receipt-old',
+                    date: '2025-12-01',
+                    items: [makeItem({ name: 'Rijst' })],
+                }),
+            ];
+
+            // #when
+            const names = store.recentItems.map((item) => item.name);
+
+            // #then
+            expect(names).toEqual(['Melk']);
+        });
+    });
+
     describe('spendingByCategory', () => {
         it('sums price times quantity per category', () => {
             // #given

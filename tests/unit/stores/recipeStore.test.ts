@@ -77,10 +77,13 @@ describe('recipeStore', () => {
     beforeEach(() => {
         vi.stubGlobal('localStorage', createLocalStorageStub());
         setActivePinia(createPinia());
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-01-12T12:00:00Z'));
     });
 
     afterEach(() => {
         vi.unstubAllGlobals();
+        vi.useRealTimers();
     });
 
     describe('state', () => {
