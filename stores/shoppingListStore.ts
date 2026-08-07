@@ -4,7 +4,7 @@ import type ShoppingListItemSourceInterface from '~/types/ShoppingListItemSource
 import { useReceiptStore } from '~/stores/receiptStore';
 import { useRecipeStore } from '~/stores/recipeStore';
 import { topEntries } from '~/composables/useItemFrequency';
-import { scoreRecipe } from '~/composables/useRecipeMatch';
+import { filterFreshItems, scoreRecipe } from '~/composables/useRecipeMatch';
 import { normalizeProductName } from '~/composables/useReceiptParser';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
@@ -131,8 +131,9 @@ export const useShoppingListStore = defineStore('shoppingList', {
         generateFromWeekPlan(): void {
             const recipeStore = useRecipeStore();
             const receiptStore = useReceiptStore();
-            const purchasedNames = new Set(receiptStore.recentItems.map((i) => normalizeProductName(i.name)));
-            const purchasedCategories = new Set(receiptStore.recentItems.map((i) => i.category));
+            const freshItems = filterFreshItems(receiptStore.itemsWithPurchaseDate, new Date());
+            const purchasedNames = new Set(freshItems.map((i) => normalizeProductName(i.name)));
+            const purchasedCategories = new Set(freshItems.map((i) => i.category));
 
             const missingByName = new Map<
                 string,
