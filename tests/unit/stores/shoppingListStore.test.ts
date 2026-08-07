@@ -397,6 +397,7 @@ describe('shoppingListStore', () => {
                     checked: false,
                     frequency: 1,
                     sources: [{ day: 'monday', recipeName: 'Pannenkoeken' }],
+                    amounts: ['100ml'],
                 },
             ]);
         });
@@ -465,6 +466,7 @@ describe('shoppingListStore', () => {
                         { day: 'monday', recipeName: 'Pannenkoeken' },
                         { day: 'tuesday', recipeName: 'Pannenkoeken' },
                     ],
+                    amounts: ['100ml', '100ml'],
                 },
             ]);
         });
