@@ -47,7 +47,9 @@ export const useRecipeStore = defineStore('recipe', {
 
         suggestedRecipes(): RecipeInterface[] {
             const receiptStore = useReceiptStore();
-            return rankRecipes(this.availableRecipes, receiptStore.recentItems).map((s) => s.recipe);
+            return rankRecipes(this.availableRecipes, receiptStore.itemsWithPurchaseDate).map(
+                (s) => s.recipe,
+            );
         },
 
         weekPlanRecipes(): Record<string, RecipeInterface | undefined> {

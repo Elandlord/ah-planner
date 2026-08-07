@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { useReceiptOriginalStore } from '~/composables/useReceiptOriginalStore';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
+import type DatedReceiptItemInterface from '~/types/DatedReceiptItemInterface';
 import type ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 const STORAGE_KEY = 'ah-planner-receipts';
@@ -43,6 +44,11 @@ export const useReceiptStore = defineStore('receipt', {
 
         allItems: (state): ReceiptItemInterface[] =>
             state.receipts.flatMap((receipt) => receipt.items),
+
+        itemsWithPurchaseDate: (state): DatedReceiptItemInterface[] =>
+            state.receipts.flatMap((receipt) =>
+                receipt.items.map((item) => ({ ...item, purchaseDate: receipt.date })),
+            ),
 
         recentItems: (state): ReceiptItemInterface[] => {
             const cutoff = Date.now() - RECENT_PURCHASE_WINDOW_DAYS * 24 * 60 * 60 * 1000;

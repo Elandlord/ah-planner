@@ -247,6 +247,34 @@ describe('receiptStore', () => {
         });
     });
 
+    describe('itemsWithPurchaseDate', () => {
+        it('attaches the owning receipt date to each item', () => {
+            // #given
+            const store = useReceiptStore();
+            store.receipts = [
+                makeReceipt({
+                    id: 'receipt-1',
+                    date: '2026-01-10',
+                    items: [makeItem({ name: 'Melk' })],
+                }),
+                makeReceipt({
+                    id: 'receipt-2',
+                    date: '2025-12-01',
+                    items: [makeItem({ name: 'Rijst' })],
+                }),
+            ];
+
+            // #when
+            const dated = store.itemsWithPurchaseDate;
+
+            // #then
+            expect(dated).toEqual([
+                expect.objectContaining({ name: 'Melk', purchaseDate: '2026-01-10' }),
+                expect.objectContaining({ name: 'Rijst', purchaseDate: '2025-12-01' }),
+            ]);
+        });
+    });
+
     describe('recentItems', () => {
         beforeEach(() => {
             vi.useFakeTimers();
