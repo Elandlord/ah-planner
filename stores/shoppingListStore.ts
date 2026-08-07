@@ -131,8 +131,8 @@ export const useShoppingListStore = defineStore('shoppingList', {
         generateFromWeekPlan(): void {
             const recipeStore = useRecipeStore();
             const receiptStore = useReceiptStore();
-            const purchasedNames = new Set(receiptStore.allItems.map((i) => normalizeProductName(i.name)));
-            const purchasedCategories = new Set(receiptStore.allItems.map((i) => i.category));
+            const purchasedNames = new Set(receiptStore.recentItems.map((i) => normalizeProductName(i.name)));
+            const purchasedCategories = new Set(receiptStore.recentItems.map((i) => i.category));
 
             const missingByName = new Map<
                 string,

@@ -5,6 +5,7 @@ import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import type ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 const STORAGE_KEY = 'ah-planner-receipts';
+const RECENT_PURCHASE_WINDOW_DAYS = 14;
 
 function loadFromStorage(): ReceiptInterface[] {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -42,6 +43,13 @@ export const useReceiptStore = defineStore('receipt', {
 
         allItems: (state): ReceiptItemInterface[] =>
             state.receipts.flatMap((receipt) => receipt.items),
+
+        recentItems: (state): ReceiptItemInterface[] => {
+            const cutoff = Date.now() - RECENT_PURCHASE_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+            return state.receipts
+                .filter((receipt) => new Date(receipt.date).getTime() >= cutoff)
+                .flatMap((receipt) => receipt.items);
+        },
 
         spendingByCategory(): Record<string, number> {
             const spending: Record<string, number> = {};
