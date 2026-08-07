@@ -7,7 +7,7 @@ import { downloadFile } from '~/composables/useReceiptExport';
 
 const BACKUP_VERSION = 1;
 
-function isValidBackup(value: unknown): value is BackupInterface {
+export function isValidBackup(value: unknown): value is BackupInterface {
     if (typeof value !== 'object' || value === null) {
         return false;
     }
@@ -25,7 +25,7 @@ function isValidBackup(value: unknown): value is BackupInterface {
     );
 }
 
-function createBackup(): BackupInterface {
+export function createBackup(): BackupInterface {
     const receiptStore = useReceiptStore();
     const recipeStore = useRecipeStore();
     const shoppingListStore = useShoppingListStore();

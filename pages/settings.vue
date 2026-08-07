@@ -1,11 +1,18 @@
 <script setup lang="ts">
+import { ref } from 'vue';
+import { useAutoBackup } from '~/composables/useAutoBackup';
 import { useDataBackup } from '~/composables/useDataBackup';
 
 const { exportBackup, importBackup } = useDataBackup();
+const { isSupported: autoBackupSupported, isEnabled: autoBackupEnabled, enable, disable } =
+    useAutoBackup();
 
 const statusMessage = ref('');
 const statusIsError = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
+
+const autoBackupStatus = ref('');
+const autoBackupStatusIsError = ref(false);
 
 function onExport(): void {
     exportBackup();
@@ -37,6 +44,28 @@ function onFileSelected(event: Event): void {
     };
     reader.readAsText(file);
     input.value = '';
+}
+
+async function onEnableAutoBackup(): Promise<void> {
+    try {
+        await enable();
+        if (autoBackupEnabled.value) {
+            autoBackupStatusIsError.value = false;
+            autoBackupStatus.value = 'Automatische back-up ingeschakeld.';
+        }
+    } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+            return;
+        }
+        autoBackupStatusIsError.value = true;
+        autoBackupStatus.value = error instanceof Error ? error.message : 'Inschakelen mislukt.';
+    }
+}
+
+async function onDisableAutoBackup(): Promise<void> {
+    await disable();
+    autoBackupStatusIsError.value = false;
+    autoBackupStatus.value = 'Automatische back-up uitgeschakeld.';
 }
 </script>
 
@@ -85,6 +114,45 @@ function onFileSelected(event: Event): void {
                 {{ statusMessage }}
             </p>
         </div>
+
+        <div
+            v-if="autoBackupSupported"
+            class="section"
+        >
+            <h2 class="section-title">
+                Automatische back-up
+            </h2>
+            <p class="section-description">
+                Kies een bestand op je apparaat. AH Planner houdt dat bestand
+                automatisch bij na elke wijziging, zodat je data bewaard blijft
+                als de browser leeg raakt. Werkt alleen in Chrome-achtige browsers.
+            </p>
+
+            <div class="actions">
+                <button
+                    v-if="!autoBackupEnabled"
+                    class="autobackup-btn"
+                    @click="onEnableAutoBackup"
+                >
+                    Automatische back-up inschakelen
+                </button>
+                <button
+                    v-else
+                    class="autobackup-btn autobackup-btn-secondary"
+                    @click="onDisableAutoBackup"
+                >
+                    Automatische back-up uitschakelen
+                </button>
+            </div>
+
+            <p
+                v-if="autoBackupStatus"
+                class="autobackup-status"
+                :class="{ 'status-error': autoBackupStatusIsError }"
+            >
+                {{ autoBackupStatus }}
+            </p>
+        </div>
     </div>
 </template>
 
@@ -117,11 +185,20 @@ function onFileSelected(event: Event): void {
     @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
 }
 
+.autobackup-btn {
+    @apply px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700;
+}
+
+.autobackup-btn-secondary {
+    @apply bg-gray-100 text-gray-700 hover:bg-gray-200;
+}
+
 .hidden-input {
     @apply hidden;
 }
 
-.status-message {
+.status-message,
+.autobackup-status {
     @apply mt-3 text-sm text-green-600;
 }
 
