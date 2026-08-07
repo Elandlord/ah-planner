@@ -83,6 +83,29 @@ describe('useOcr', () => {
             expect(isProcessing.value).toBe(false);
             expect(receipt).toBeNull();
         });
+
+        it('times out and resets state when the worker never resolves', async () => {
+            // #given
+            vi.useFakeTimers();
+            mockWorker.recognize.mockReturnValue(new Promise(() => {}));
+            const { processImage, isProcessing, error } = useOcr();
+
+            // #when
+            const promise = processImage('data:image/png;base64,fake');
+            await vi.waitFor(() => expect(mockWorker.recognize).toHaveBeenCalled(), {
+                timeout: 1000,
+            });
+            await vi.advanceTimersByTimeAsync(30000);
+            const receipt = await promise;
+
+            // #then
+            expect(receipt).toBeNull();
+            expect(error.value).toBe('OCR verwerking duurde te lang');
+            expect(isProcessing.value).toBe(false);
+            expect(mockWorker.terminate).toHaveBeenCalled();
+
+            vi.useRealTimers();
+        });
     });
 
     describe('processPdf', () => {
