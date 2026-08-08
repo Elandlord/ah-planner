@@ -1,5 +1,7 @@
+import { normalizeProductName } from '~/composables/useReceiptParser';
+import { shelfLifeDaysFor } from '~/data/shelfLifeDays';
 import type RecipeInterface from '~/types/RecipeInterface';
-import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
+import type DatedReceiptItemInterface from '~/types/DatedReceiptItemInterface';
 import type ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 interface RecipeScoreInterface {
@@ -7,6 +9,22 @@ interface RecipeScoreInterface {
     score: number;
     matchedIngredients: string[];
     missingIngredients: string[];
+}
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export function filterFreshItems(
+    items: DatedReceiptItemInterface[],
+    now: Date,
+): DatedReceiptItemInterface[] {
+    return items.filter((item) => {
+        const ageInDays = (now.getTime() - new Date(item.purchaseDate).getTime()) / DAY_IN_MS;
+        return ageInDays <= shelfLifeDaysFor(item.category);
+    });
 }
 
 export function scoreRecipe(
@@ -19,7 +37,9 @@ export function scoreRecipe(
     let score = 0;
 
     for (const ingredient of recipe.ingredients) {
-        const nameMatch = purchasedNames.has(ingredient.name.toLowerCase());
+        const normalizedIngredient = normalizeProductName(ingredient.name);
+        const ingredientPattern = new RegExp(`\\b${escapeRegExp(normalizedIngredient)}`);
+        const nameMatch = [...purchasedNames].some((name) => ingredientPattern.test(name));
         const categoryMatch = purchasedCategories.has(ingredient.category);
 
         if (nameMatch) {
@@ -38,10 +58,12 @@ export function scoreRecipe(
 
 export function rankRecipes(
     recipes: RecipeInterface[],
-    items: ReceiptItemInterface[],
+    items: DatedReceiptItemInterface[],
+    now: Date = new Date(),
 ): RecipeScoreInterface[] {
-    const purchasedNames = new Set(items.map((i) => i.name.toLowerCase()));
-    const purchasedCategories = new Set(items.map((i) => i.category));
+    const freshItems = filterFreshItems(items, now);
+    const purchasedNames = new Set(freshItems.map((i) => normalizeProductName(i.name)));
+    const purchasedCategories = new Set(freshItems.map((i) => i.category));
 
     return recipes
         .map((recipe) => scoreRecipe(recipe, purchasedNames, purchasedCategories))
@@ -53,5 +75,6 @@ export function useRecipeMatch() {
     return {
         scoreRecipe,
         rankRecipes,
+        filterFreshItems,
     };
 }

@@ -1,9 +1,151 @@
 import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
-import { categorizeProduct } from '~/composables/useProductCategories';
+import type CategoryOverridesInterface from '~/types/CategoryOverridesInterface';
 
-export function parseReceiptText(rawText: string): ReceiptItemInterface[] {
+const CATEGORY_KEYWORDS: Record<string, ProductCategoryEnum> = {
+    sla: ProductCategoryEnum.groente,
+    tomaat: ProductCategoryEnum.groente,
+    tomaten: ProductCategoryEnum.groente,
+    komkommer: ProductCategoryEnum.groente,
+    paprika: ProductCategoryEnum.groente,
+    ui: ProductCategoryEnum.groente,
+    uien: ProductCategoryEnum.groente,
+    wortel: ProductCategoryEnum.groente,
+    aardappel: ProductCategoryEnum.groente,
+    aardappelen: ProductCategoryEnum.groente,
+    broccoli: ProductCategoryEnum.groente,
+    bloemkool: ProductCategoryEnum.groente,
+    spinazie: ProductCategoryEnum.groente,
+    prei: ProductCategoryEnum.groente,
+    champignon: ProductCategoryEnum.groente,
+    champignons: ProductCategoryEnum.groente,
+    courgette: ProductCategoryEnum.groente,
+    boerenkool: ProductCategoryEnum.groente,
+    andijvie: ProductCategoryEnum.groente,
+    witlof: ProductCategoryEnum.groente,
+
+    appel: ProductCategoryEnum.fruit,
+    banaan: ProductCategoryEnum.fruit,
+    bananen: ProductCategoryEnum.fruit,
+    peer: ProductCategoryEnum.fruit,
+    sinaasappel: ProductCategoryEnum.fruit,
+    druiven: ProductCategoryEnum.fruit,
+    citroen: ProductCategoryEnum.fruit,
+    aardbei: ProductCategoryEnum.fruit,
+
+    kip: ProductCategoryEnum.vlees,
+    kipfilet: ProductCategoryEnum.vlees,
+    gehakt: ProductCategoryEnum.vlees,
+    rookworst: ProductCategoryEnum.vlees,
+    spek: ProductCategoryEnum.vlees,
+    ham: ProductCategoryEnum.vlees,
+    worst: ProductCategoryEnum.vlees,
+    biefstuk: ProductCategoryEnum.vlees,
+
+    zalm: ProductCategoryEnum.vis,
+    tilapia: ProductCategoryEnum.vis,
+    garnalen: ProductCategoryEnum.vis,
+    vis: ProductCategoryEnum.vis,
+    schelvis: ProductCategoryEnum.vis,
+
+    melk: ProductCategoryEnum.zuivel,
+    kaas: ProductCategoryEnum.zuivel,
+    yoghurt: ProductCategoryEnum.zuivel,
+    boter: ProductCategoryEnum.zuivel,
+    ei: ProductCategoryEnum.zuivel,
+    eieren: ProductCategoryEnum.zuivel,
+    room: ProductCategoryEnum.zuivel,
+    kwark: ProductCategoryEnum.zuivel,
+
+    brood: ProductCategoryEnum.brood,
+    croissant: ProductCategoryEnum.brood,
+    pita: ProductCategoryEnum.brood,
+    wrap: ProductCategoryEnum.brood,
+    tortilla: ProductCategoryEnum.brood,
+
+    cola: ProductCategoryEnum.dranken,
+    sap: ProductCategoryEnum.dranken,
+    water: ProductCategoryEnum.dranken,
+    bier: ProductCategoryEnum.dranken,
+    wijn: ProductCategoryEnum.dranken,
+    thee: ProductCategoryEnum.dranken,
+    koffie: ProductCategoryEnum.dranken,
+
+    spaghetti: ProductCategoryEnum.pasta,
+    macaroni: ProductCategoryEnum.pasta,
+    penne: ProductCategoryEnum.pasta,
+    pasta: ProductCategoryEnum.pasta,
+    noodles: ProductCategoryEnum.pasta,
+
+    rijst: ProductCategoryEnum.rijst,
+    basmati: ProductCategoryEnum.rijst,
+
+    blik: ProductCategoryEnum.conserven,
+    tomatensaus: ProductCategoryEnum.conserven,
+    bonen: ProductCategoryEnum.conserven,
+    kokosmelk: ProductCategoryEnum.conserven,
+
+    peper: ProductCategoryEnum.kruiden,
+    zout: ProductCategoryEnum.kruiden,
+    kerrie: ProductCategoryEnum.kruiden,
+    ketjap: ProductCategoryEnum.kruiden,
+    sambal: ProductCategoryEnum.kruiden,
+    kruiden: ProductCategoryEnum.kruiden,
+
+    chips: ProductCategoryEnum.snacks,
+    noten: ProductCategoryEnum.snacks,
+    koek: ProductCategoryEnum.snacks,
+    chocola: ProductCategoryEnum.snacks,
+    snoep: ProductCategoryEnum.snacks,
+
+    diepvries: ProductCategoryEnum.diepvries,
+
+    schoonmaak: ProductCategoryEnum.huishouden,
+    afwasmiddel: ProductCategoryEnum.huishouden,
+    toiletpapier: ProductCategoryEnum.huishouden,
+    wc: ProductCategoryEnum.huishouden,
+    wasmiddel: ProductCategoryEnum.huishouden,
+};
+
+const CATEGORY_KEYWORD_ENTRIES = Object.entries(CATEGORY_KEYWORDS).sort(
+    ([a], [b]) => b.length - a.length,
+);
+
+const TRAILING_SIZE_PATTERN = /\s+\d+([.,]\d+)?\s*(gram|gr|kg|ml|cl|ltr|stuks|st|g|l|x)$/;
+
+export function normalizeProductName(name: string): string {
+    return name
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(TRAILING_SIZE_PATTERN, '')
+        .trim();
+}
+
+function categorizeProduct(
+    name: string,
+    overrides: CategoryOverridesInterface = {},
+): ProductCategoryEnum {
+    const normalizedName = normalizeProductName(name);
+
+    const override = overrides[normalizedName];
+    if (override) {
+        return override;
+    }
+
+    for (const [keyword, category] of CATEGORY_KEYWORD_ENTRIES) {
+        if (normalizedName.includes(keyword)) {
+            return category;
+        }
+    }
+    return ProductCategoryEnum.overig;
+}
+
+export function parseReceiptText(
+    rawText: string,
+    overrides: CategoryOverridesInterface = {},
+): ReceiptItemInterface[] {
     const lines = rawText.split('\n').map((line) => line.trim()).filter(Boolean);
     const items: ReceiptItemInterface[] = [];
 
@@ -42,7 +184,7 @@ export function parseReceiptText(rawText: string): ReceiptItemInterface[] {
                 name,
                 quantity,
                 price: unitPrice ?? totalPrice,
-                category: categorizeProduct(name),
+                category: categorizeProduct(name, overrides),
             });
             continue;
         }
@@ -53,7 +195,7 @@ export function parseReceiptText(rawText: string): ReceiptItemInterface[] {
                 name: qtyMatch[2].trim(),
                 quantity: parseInt(qtyMatch[1], 10),
                 price: parsePrice(qtyMatch[3]),
-                category: categorizeProduct(qtyMatch[2]),
+                category: categorizeProduct(qtyMatch[2], overrides),
             });
             continue;
         }
@@ -64,7 +206,7 @@ export function parseReceiptText(rawText: string): ReceiptItemInterface[] {
                 name: priceMatch[1].trim(),
                 quantity: 1,
                 price: parsePrice(priceMatch[2]),
-                category: categorizeProduct(priceMatch[1]),
+                category: categorizeProduct(priceMatch[1], overrides),
             });
         }
     }
@@ -171,8 +313,11 @@ export function extractDate(rawText: string): string {
     return new Date().toISOString().split('T')[0];
 }
 
-export function buildReceipt(rawText: string): ReceiptInterface {
-    const items = parseReceiptText(rawText);
+export function buildReceipt(
+    rawText: string,
+    overrides: CategoryOverridesInterface = {},
+): ReceiptInterface {
+    const items = parseReceiptText(rawText, overrides);
     const total = extractTotal(rawText) || items.reduce(
         (sum, item) => sum + item.price * item.quantity, 0,
     );
@@ -194,5 +339,6 @@ export function useReceiptParser() {
         extractDate,
         buildReceipt,
         categorizeProduct,
+        normalizeProductName,
     };
 }

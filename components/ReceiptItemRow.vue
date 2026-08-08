@@ -6,6 +6,7 @@ const item = defineModel<ReceiptItemInterface>({ required: true });
 
 const emit = defineEmits<{
     remove: [];
+    categoryChange: [ProductCategoryEnum];
 }>();
 
 const categoryOptions = Object.values(ProductCategoryEnum);
@@ -35,6 +36,7 @@ const categoryOptions = Object.values(ProductCategoryEnum);
         <select
             v-model="item.category"
             class="item-category"
+            @change="emit('categoryChange', item.category)"
         >
             <option
                 v-for="cat in categoryOptions"

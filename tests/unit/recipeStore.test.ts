@@ -15,31 +15,39 @@ describe('swapDays', () => {
         setActivePinia(createPinia());
     });
 
-    it('moves a recipe to an empty day', () => {
+    function planWith(plan: Record<string, string>) {
         const store = useRecipeStore();
-        store.weekPlan = { Maandag: 'erwtensoep' };
+        store.weekPlans = { [store.currentWeekStart]: { ...plan } };
+        return store;
+    }
+
+    it('moves a recipe to an empty day', () => {
+        const store = planWith({ Maandag: 'erwtensoep' });
         store.swapDays('Maandag', 'Woensdag');
         expect(store.weekPlan).toEqual({ Woensdag: 'erwtensoep' });
     });
 
     it('swaps two planned days instead of overwriting one', () => {
-        const store = useRecipeStore();
-        store.weekPlan = { Maandag: 'erwtensoep', Dinsdag: 'lasagne' };
+        const store = planWith({ Maandag: 'erwtensoep', Dinsdag: 'lasagne' });
         store.swapDays('Maandag', 'Dinsdag');
         expect(store.weekPlan).toEqual({ Maandag: 'lasagne', Dinsdag: 'erwtensoep' });
     });
 
     it('does nothing when the day it came from is empty', () => {
-        const store = useRecipeStore();
-        store.weekPlan = { Dinsdag: 'lasagne' };
+        const store = planWith({ Dinsdag: 'lasagne' });
         store.swapDays('Maandag', 'Dinsdag');
         expect(store.weekPlan).toEqual({ Dinsdag: 'lasagne' });
     });
 
     it('does nothing when dropped on itself', () => {
-        const store = useRecipeStore();
-        store.weekPlan = { Maandag: 'erwtensoep' };
+        const store = planWith({ Maandag: 'erwtensoep' });
         store.swapDays('Maandag', 'Maandag');
         expect(store.weekPlan).toEqual({ Maandag: 'erwtensoep' });
+    });
+
+    it('plans one recipe on several days at once', () => {
+        const store = planWith({});
+        store.assignToDays(['Maandag', 'Dinsdag'], 'erwtensoep');
+        expect(store.weekPlan).toEqual({ Maandag: 'erwtensoep', Dinsdag: 'erwtensoep' });
     });
 });

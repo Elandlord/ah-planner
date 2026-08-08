@@ -2,10 +2,10 @@
 import type RecipeInterface from '~/types/RecipeInterface';
 import { useRecipeBonus } from '~/composables/useRecipeBonus';
 
-const { recipe, isSaved, days, startOpen = false } = defineProps<{
+const { recipe, isSaved, days = [], startOpen = false } = defineProps<{
     recipe: RecipeInterface;
     isSaved: boolean;
-    days: string[];
+    days?: string[];
     startOpen?: boolean;
 }>();
 

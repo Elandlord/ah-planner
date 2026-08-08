@@ -2,8 +2,13 @@
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
+import { useCategoryOverrideStore } from '~/stores/categoryOverrideStore';
+import { useReceiptOriginalStore } from '~/composables/useReceiptOriginalStore';
 
 const receipt = defineModel<ReceiptInterface>({ required: true });
+
+const categoryOverrideStore = useCategoryOverrideStore();
+const originalStore = useReceiptOriginalStore();
 
 const emit = defineEmits<{
     save: [];
@@ -28,6 +33,18 @@ function addItem(): void {
 function removeItem(index: number): void {
     receipt.value.items.splice(index, 1);
 }
+
+function rememberCategory(name: string, category: ProductCategoryEnum): void {
+    categoryOverrideStore.setOverride(name, category);
+}
+
+async function viewOriginal(): Promise<void> {
+    const blob = await originalStore.getOriginal(receipt.value.id);
+    if (!blob) {
+        return;
+    }
+    window.open(URL.createObjectURL(blob), '_blank');
+}
 </script>
 
 <template>
@@ -45,6 +62,14 @@ function removeItem(index: number): void {
                         class="meta-input"
                     >
                 </label>
+                <button
+                    v-if="receipt.hasOriginal"
+                    class="view-original-btn"
+                    type="button"
+                    @click="viewOriginal"
+                >
+                    Origineel bekijken
+                </button>
             </div>
         </div>
 
@@ -61,6 +86,7 @@ function removeItem(index: number): void {
             :key="index"
             v-model="receipt.items[index]"
             @remove="removeItem(index)"
+            @category-change="rememberCategory(item.name, $event)"
         />
 
         <button
@@ -111,6 +137,10 @@ function removeItem(index: number): void {
 
 .meta-input {
     @apply border rounded px-2 py-1 text-sm ml-2;
+}
+
+.view-original-btn {
+    @apply text-sm text-blue-600 hover:text-blue-800 ml-3;
 }
 
 .items-header {

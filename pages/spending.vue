@@ -2,6 +2,7 @@
 import { useReceiptStore } from '~/stores/receiptStore';
 import { breakdownPayments } from '~/composables/useReceiptPayments';
 import { monthlySpend } from '~/composables/useSpendingTrend';
+import { topEntries } from '~/composables/useItemFrequency';
 
 const receiptStore = useReceiptStore();
 
@@ -9,11 +10,7 @@ const payments = computed(() => breakdownPayments(receiptStore.receipts));
 const months = computed(() => monthlySpend(receiptStore.receipts));
 const savingsEntries = computed(() => Object.entries(payments.value.savingsByMethod));
 
-const topItems = computed(() =>
-    Object.entries(receiptStore.itemFrequency)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 10),
-);
+const topItems = computed(() => topEntries(receiptStore.itemFrequency, 10));
 </script>
 
 <template>

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { scoreRecipe, rankRecipes } from '~/composables/useRecipeMatch';
+import { scoreRecipe, rankRecipes, filterFreshItems } from '~/composables/useRecipeMatch';
+import { normalizeProductName } from '~/composables/useReceiptParser';
 import type RecipeInterface from '~/types/RecipeInterface';
-import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
+import type DatedReceiptItemInterface from '~/types/DatedReceiptItemInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 const MOCK_RECIPE: RecipeInterface = {
@@ -84,34 +85,161 @@ describe('scoreRecipe', () => {
 
         expect(result.score).toBe(4);
     });
+
+    it('matches ingredients as substrings of prefixed purchased names', () => {
+        const purchasedNames = new Set([
+            normalizeProductName('AH Kipfilet'),
+            normalizeProductName('AH Melk LV'),
+        ]);
+        const purchasedCategories = new Set<ProductCategoryEnum>([]);
+
+        const result = scoreRecipe(MOCK_RECIPE, purchasedNames, purchasedCategories);
+
+        expect(result.matchedIngredients).toContain('melk');
+        expect(result.score).toBeGreaterThanOrEqual(3);
+    });
+
+    it('does not match an ingredient as a substring of an unrelated purchased name', () => {
+        const recipe: RecipeInterface = {
+            ...MOCK_RECIPE,
+            ingredients: [{ name: 'ei', amount: '2 stuks', category: ProductCategoryEnum.zuivel }],
+        };
+        const purchasedNames = new Set([normalizeProductName('Reinigingsmiddel')]);
+        const purchasedCategories = new Set<ProductCategoryEnum>([]);
+
+        const result = scoreRecipe(recipe, purchasedNames, purchasedCategories);
+
+        expect(result.matchedIngredients).not.toContain('ei');
+        expect(result.missingIngredients).toContain('ei');
+    });
+
+    it('matches an ingredient against a plural purchased name', () => {
+        const recipe: RecipeInterface = {
+            ...MOCK_RECIPE,
+            ingredients: [{ name: 'ei', amount: '2 stuks', category: ProductCategoryEnum.zuivel }],
+        };
+        const purchasedNames = new Set([normalizeProductName('Eieren')]);
+        const purchasedCategories = new Set<ProductCategoryEnum>([]);
+
+        const result = scoreRecipe(recipe, purchasedNames, purchasedCategories);
+
+        expect(result.matchedIngredients).toContain('ei');
+    });
+
+    it('matches an ingredient against an exact purchased name', () => {
+        const recipe: RecipeInterface = {
+            ...MOCK_RECIPE,
+            ingredients: [{ name: 'ei', amount: '2 stuks', category: ProductCategoryEnum.zuivel }],
+        };
+        const purchasedNames = new Set([normalizeProductName('Ei')]);
+        const purchasedCategories = new Set<ProductCategoryEnum>([]);
+
+        const result = scoreRecipe(recipe, purchasedNames, purchasedCategories);
+
+        expect(result.matchedIngredients).toContain('ei');
+    });
 });
 
 describe('rankRecipes', () => {
-    const MOCK_ITEMS: ReceiptItemInterface[] = [
-        { name: 'aardappelen', price: 1.50, quantity: 1, category: ProductCategoryEnum.groente },
-        { name: 'boerenkool', price: 1.49, quantity: 1, category: ProductCategoryEnum.groente },
-        { name: 'rookworst', price: 2.99, quantity: 1, category: ProductCategoryEnum.vlees },
+    const NOW = new Date('2026-01-20T12:00:00Z');
+
+    const MOCK_ITEMS: DatedReceiptItemInterface[] = [
+        {
+            name: 'aardappelen',
+            price: 1.5,
+            quantity: 1,
+            category: ProductCategoryEnum.groente,
+            purchaseDate: '2026-01-18',
+        },
+        {
+            name: 'boerenkool',
+            price: 1.49,
+            quantity: 1,
+            category: ProductCategoryEnum.groente,
+            purchaseDate: '2026-01-18',
+        },
+        {
+            name: 'rookworst',
+            price: 2.99,
+            quantity: 1,
+            category: ProductCategoryEnum.vlees,
+            purchaseDate: '2026-01-18',
+        },
     ];
 
     it('ranks recipes by score descending', () => {
-        const ranked = rankRecipes([MOCK_RECIPE, MOCK_RECIPE_2], MOCK_ITEMS);
+        const ranked = rankRecipes([MOCK_RECIPE, MOCK_RECIPE_2], MOCK_ITEMS, NOW);
 
         expect(ranked.length).toBeGreaterThan(0);
         expect(ranked[0].recipe.id).toBe('test-recipe');
     });
 
     it('filters out recipes with zero score', () => {
-        const items: ReceiptItemInterface[] = [
-            { name: 'chocola', price: 2.00, quantity: 1, category: ProductCategoryEnum.snacks },
+        const items: DatedReceiptItemInterface[] = [
+            {
+                name: 'chocola',
+                price: 2.0,
+                quantity: 1,
+                category: ProductCategoryEnum.snacks,
+                purchaseDate: '2026-01-18',
+            },
         ];
 
-        const ranked = rankRecipes([MOCK_RECIPE, MOCK_RECIPE_2], items);
+        const ranked = rankRecipes([MOCK_RECIPE, MOCK_RECIPE_2], items, NOW);
 
         expect(ranked.every((r) => r.score > 0)).toBe(true);
     });
 
     it('returns empty array for no items', () => {
-        const ranked = rankRecipes([MOCK_RECIPE], []);
+        const ranked = rankRecipes([MOCK_RECIPE], [], NOW);
         expect(ranked).toEqual([]);
+    });
+
+    it('excludes items bought before their category shelf-life window', () => {
+        const items: DatedReceiptItemInterface[] = [
+            {
+                name: 'aardappelen',
+                price: 1.5,
+                quantity: 1,
+                category: ProductCategoryEnum.groente,
+                purchaseDate: '2025-12-01',
+            },
+        ];
+
+        const ranked = rankRecipes([MOCK_RECIPE], items, NOW);
+
+        expect(ranked).toEqual([]);
+    });
+});
+
+describe('filterFreshItems', () => {
+    const NOW = new Date('2026-01-20T12:00:00Z');
+
+    it('keeps items purchased within their category shelf-life window', () => {
+        const items: DatedReceiptItemInterface[] = [
+            {
+                name: 'rijst',
+                price: 2.0,
+                quantity: 1,
+                category: ProductCategoryEnum.rijst,
+                purchaseDate: '2025-06-01',
+            },
+        ];
+
+        expect(filterFreshItems(items, NOW)).toEqual(items);
+    });
+
+    it('drops items purchased outside their category shelf-life window', () => {
+        const items: DatedReceiptItemInterface[] = [
+            {
+                name: 'vis',
+                price: 5.0,
+                quantity: 1,
+                category: ProductCategoryEnum.vis,
+                purchaseDate: '2026-01-01',
+            },
+        ];
+
+        expect(filterFreshItems(items, NOW)).toEqual([]);
     });
 });

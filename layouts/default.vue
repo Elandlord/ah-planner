@@ -2,10 +2,12 @@
 const navItems = [
     { to: '/', label: 'Home' },
     { to: '/receipts', label: 'Bonnen' },
+    { to: '/pantry', label: 'Voorraad' },
     { to: '/spending', label: 'Uitgaven' },
     { to: '/advice', label: 'Advies' },
     { to: '/recipes', label: 'Recepten' },
     { to: '/shopping-list', label: 'Boodschappen' },
+    { to: '/settings', label: 'Instellingen' },
 ];
 </script>
 

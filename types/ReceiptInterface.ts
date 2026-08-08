@@ -9,6 +9,7 @@ interface ReceiptInterface {
     storeName: string;
     discountTotal?: number;
     payments?: ReceiptPaymentInterface[];
+    hasOriginal?: boolean;
 }
 
 export type { ReceiptInterface as default };

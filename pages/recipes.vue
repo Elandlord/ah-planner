@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type RecipeInterface from '~/types/RecipeInterface';
 import { useRecipeStore } from '~/stores/recipeStore';
 import { filterRecipes, recipeCategories } from '~/composables/useRecipeFilters';
 import { buildWeekPlan, pickRandom, recipesNeeded } from '~/composables/useWeekPlan';
@@ -11,16 +12,20 @@ const recipeStore = useRecipeStore();
 const toast = useToast();
 const { bonusByRecipe, loadBonusData } = useRecipeBonus();
 
-type RecipeTab = 'suggested' | 'all' | 'saved' | 'weekplan';
+type RecipeTab = 'suggested' | 'all' | 'saved' | 'mine' | 'weekplan';
 
 const TABS: { key: RecipeTab; label: string }[] = [
     { key: 'suggested', label: 'Aanbevolen' },
     { key: 'all', label: 'Alle recepten' },
     { key: 'saved', label: 'Opgeslagen' },
+    { key: 'mine', label: 'Mijn recepten' },
     { key: 'weekplan', label: 'Weekplan' },
 ];
 
 const activeTab = ref<RecipeTab>('suggested');
+const isFormOpen = ref(false);
+const editedRecipe = ref<RecipeInterface | null>(null);
+const formKey = computed(() => editedRecipe.value?.id ?? 'new');
 const category = ref('Alles');
 const search = ref('');
 const openRecipeId = ref<string | null>(null);
@@ -31,12 +36,12 @@ const suggested = computed(() => sortByBonus(
     filterRecipes(recipeStore.suggestedRecipes, category.value, search.value),
     bonusByRecipe.value,
 ));
-const all = computed(() => filterRecipes(recipeStore.allRecipes, category.value, search.value));
+const all = computed(() => filterRecipes(recipeStore.availableRecipes, category.value, search.value));
 const saved = computed(() => filterRecipes(recipeStore.savedRecipes, category.value, search.value));
 
 function planRecipe(recipeId: string, days: string[]): void {
     recipeStore.assignToDays(days, recipeId);
-    const name = recipeStore.allRecipes.find((r) => r.id === recipeId)?.name;
+    const name = recipeStore.availableRecipes.find((r) => r.id === recipeId)?.name;
     toast.success(`${name} staat op ${days.join(', ')}.`);
 }
 
@@ -56,7 +61,7 @@ function randomiseWeek(): void {
     const needed = recipesNeeded(DAYS.length, runLength.value);
     const base = recipeStore.savedRecipes.length >= needed
         ? recipeStore.savedRecipes
-        : recipeStore.allRecipes;
+        : recipeStore.availableRecipes;
     const withBonus = base.filter((candidate) => (bonusByRecipe.value.get(candidate.id) ?? 0) > 0);
     const pool = withBonus.length >= needed ? withBonus : base;
     const picked = pickRandom(pool, needed, Math.random);
@@ -68,7 +73,7 @@ function randomiseWeek(): void {
     toast.success(`Week gevuld met ${picked.length} recepten.`);
 }
 
-onMounted(() => loadBonusData(recipeStore.allRecipes));
+onMounted(() => loadBonusData(recipeStore.availableRecipes));
 
 function startDrag(day: string): void {
     draggedDay.value = day;
@@ -79,6 +84,30 @@ function dropOn(day: string): void {
         recipeStore.swapDays(draggedDay.value, day);
     }
     draggedDay.value = null;
+}
+
+function openNewRecipeForm(): void {
+    editedRecipe.value = null;
+    isFormOpen.value = true;
+}
+
+function openEditRecipeForm(recipe: RecipeInterface): void {
+    editedRecipe.value = recipe;
+    isFormOpen.value = true;
+}
+
+function closeForm(): void {
+    isFormOpen.value = false;
+    editedRecipe.value = null;
+}
+
+function saveRecipe(recipe: Omit<RecipeInterface, 'id'>): void {
+    if (editedRecipe.value) {
+        recipeStore.updateRecipe(editedRecipe.value.id, recipe);
+    } else {
+        recipeStore.addRecipe(recipe);
+    }
+    closeForm();
 }
 </script>
 
@@ -286,6 +315,61 @@ function dropOn(day: string): void {
                 @plan="planRecipe(recipe.id, $event)"
             />
         </div>
+
+        <div
+            v-if="activeTab === 'mine'"
+            class="recipe-grid"
+        >
+            <RecipeForm
+                v-if="isFormOpen"
+                :key="formKey"
+                :recipe="editedRecipe"
+                @submit="saveRecipe"
+                @cancel="closeForm"
+            />
+            <button
+                v-else
+                class="new-recipe-btn"
+                @click="openNewRecipeForm"
+            >
+                Nieuw recept
+            </button>
+
+            <p
+                v-if="recipeStore.userRecipes.length === 0"
+                class="empty-state"
+            >
+                Nog geen eigen recepten.
+            </p>
+            <div
+                v-for="recipe in recipeStore.userRecipes"
+                :key="recipe.id"
+                class="user-recipe"
+            >
+                <RecipeCard
+                    :recipe="recipe"
+                    :is-saved="recipeStore.savedRecipeIds.includes(recipe.id)"
+                    :days="DAYS"
+                    :start-open="openRecipeId === recipe.id"
+                    @toggle-save="recipeStore.toggleSaveRecipe(recipe.id)"
+                    @plan="planRecipe(recipe.id, $event)"
+                />
+                <div class="user-recipe-actions">
+                    <button
+                        class="edit-recipe-btn"
+                        @click="openEditRecipeForm(recipe)"
+                    >
+                        Bewerken
+                    </button>
+                    <button
+                        class="delete-recipe-btn"
+                        @click="recipeStore.deleteRecipe(recipe.id)"
+                    >
+                        Verwijderen
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -324,6 +408,26 @@ function dropOn(day: string): void {
 
 .category--active {
     @apply bg-blue-600 border-blue-600 text-white hover:bg-blue-700;
+}
+
+.new-recipe-btn {
+    @apply bg-blue-600 text-white text-sm rounded px-4 py-2;
+}
+
+.user-recipe {
+    @apply bg-white rounded-lg shadow;
+}
+
+.user-recipe-actions {
+    @apply flex gap-3 px-4 pb-4;
+}
+
+.edit-recipe-btn {
+    @apply text-sm text-blue-600 hover:text-blue-800;
+}
+
+.delete-recipe-btn {
+    @apply text-sm text-red-600 hover:text-red-800;
 }
 
 .week-plan {

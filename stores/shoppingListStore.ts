@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia';
 import type ShoppingListItemInterface from '~/types/ShoppingListItemInterface';
+import type ShoppingListItemSourceInterface from '~/types/ShoppingListItemSourceInterface';
 import { useReceiptStore } from '~/stores/receiptStore';
+import { useRecipeStore } from '~/stores/recipeStore';
+import { topEntries } from '~/composables/useItemFrequency';
+import { filterFreshItems, scoreRecipe } from '~/composables/useRecipeMatch';
+import { normalizeProductName } from '~/composables/useReceiptParser';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 const STORAGE_KEY = 'ah-planner-shopping-list';
@@ -10,7 +15,11 @@ function loadFromStorage(): ShoppingListItemInterface[] {
     if (!stored) {
         return [];
     }
-    return JSON.parse(stored) as ShoppingListItemInterface[];
+    try {
+        return JSON.parse(stored) as ShoppingListItemInterface[];
+    } catch {
+        return [];
+    }
 }
 
 function saveToStorage(items: ShoppingListItemInterface[]): void {
@@ -38,6 +47,18 @@ export const useShoppingListStore = defineStore('shoppingList', {
                 grouped[item.category].push(item);
             }
             return grouped;
+        },
+
+        estimatedPrices(): Record<string, number> {
+            const receiptStore = useReceiptStore();
+            return receiptStore.averagePriceByItem;
+        },
+
+        estimatedTotal(): number {
+            return this.uncheckedItems.reduce((sum, item) => {
+                const price = this.estimatedPrices[item.name.toLowerCase()];
+                return price !== undefined ? sum + price : sum;
+            }, 0);
         },
     },
 
@@ -82,9 +103,7 @@ export const useShoppingListStore = defineStore('shoppingList', {
             const frequency = receiptStore.itemFrequency;
             const allItems = receiptStore.allItems;
 
-            const topItems = Object.entries(frequency)
-                .sort(([, a], [, b]) => b - a)
-                .slice(0, 20);
+            const topItems = topEntries(frequency, 20);
 
             for (const [name, freq] of topItems) {
                 const existingItem = this.items.find(
@@ -106,6 +125,83 @@ export const useShoppingListStore = defineStore('shoppingList', {
                     frequency: freq,
                 });
             }
+            saveToStorage(this.items);
+        },
+
+        generateFromWeekPlan(): void {
+            const recipeStore = useRecipeStore();
+            const receiptStore = useReceiptStore();
+            const freshItems = filterFreshItems(receiptStore.itemsWithPurchaseDate, new Date());
+            const purchasedNames = new Set(freshItems.map((i) => normalizeProductName(i.name)));
+            const purchasedCategories = new Set(freshItems.map((i) => i.category));
+
+            const missingByName = new Map<
+                string,
+                {
+                    category: ProductCategoryEnum;
+                    count: number;
+                    sources: ShoppingListItemSourceInterface[];
+                    amounts: string[];
+                }
+            >();
+
+            for (const [day, recipe] of Object.entries(recipeStore.weekPlanRecipes)) {
+                if (!recipe) {
+                    continue;
+                }
+
+                const { missingIngredients } = scoreRecipe(recipe, purchasedNames, purchasedCategories);
+                const missingNames = new Set(missingIngredients.map((name) => name.toLowerCase()));
+
+                for (const ingredient of recipe.ingredients) {
+                    const name = ingredient.name.toLowerCase();
+                    if (!missingNames.has(name)) {
+                        continue;
+                    }
+
+                    const source = { day, recipeName: recipe.name };
+                    const existing = missingByName.get(name);
+                    if (existing) {
+                        existing.count += 1;
+                        existing.sources.push(source);
+                        existing.amounts.push(ingredient.amount);
+                    } else {
+                        missingByName.set(name, {
+                            category: ingredient.category,
+                            count: 1,
+                            sources: [source],
+                            amounts: [ingredient.amount],
+                        });
+                    }
+                }
+            }
+
+            for (const [name, { category, count, sources, amounts }] of missingByName) {
+                const existingItem = this.items.find(
+                    (i) => i.name.toLowerCase() === name,
+                );
+                if (existingItem) {
+                    continue;
+                }
+
+                this.items.push({
+                    name,
+                    category,
+                    checked: false,
+                    frequency: count,
+                    sources,
+                    amounts,
+                });
+            }
+            saveToStorage(this.items);
+        },
+
+        exportData(): ShoppingListItemInterface[] {
+            return this.items;
+        },
+
+        importData(items: ShoppingListItemInterface[]): void {
+            this.items = items;
             saveToStorage(this.items);
         },
     },

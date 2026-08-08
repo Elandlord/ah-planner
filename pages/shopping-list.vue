@@ -90,6 +90,12 @@ function addProduct(product: AhProductInterface): void {
 
         <div class="actions">
             <button
+                class="action-btn"
+                @click="shoppingListStore.generateFromWeekPlan()"
+            >
+                Genereer uit weekplan
+            </button>
+            <button
                 v-if="shoppingListStore.checkedItems.length > 0"
                 class="action-btn-danger"
                 @click="shoppingListStore.clearChecked()"
@@ -103,6 +109,14 @@ function addProduct(product: AhProductInterface): void {
             class="empty-state"
         >
             Je boodschappenlijst is leeg. Voeg items toe of genereer uit je aankoopgeschiedenis.
+        </div>
+
+        <div
+            v-else
+            class="estimated-total"
+        >
+            <span class="estimated-total-label">Geschat totaal</span>
+            <span class="estimated-total-value">&euro;{{ shoppingListStore.estimatedTotal.toFixed(2) }}</span>
         </div>
 
         <div
@@ -126,8 +140,32 @@ function addProduct(product: AhProductInterface): void {
                         class="item-checkbox"
                         @change="shoppingListStore.toggleItem(item.name)"
                     >
-                    <span class="item-text">{{ item.name }}</span>
+                    <span class="item-text-group">
+                        <span class="item-text">
+                            {{ item.name }}
+                            <span
+                                v-if="item.amounts && item.amounts.length > 0"
+                                class="item-amounts"
+                            >
+                                ({{ item.amounts.join(' + ') }})
+                            </span>
+                        </span>
+                        <span
+                            v-if="item.sources && item.sources.length > 0"
+                            class="item-sources"
+                        >
+                            Uit weekplan: {{ item.sources.map((source) => `${source.day} (${source.recipeName})`).join(', ') }}
+                        </span>
+                    </span>
                 </label>
+                <span class="item-price">
+                    <template v-if="shoppingListStore.estimatedPrices[item.name.toLowerCase()] !== undefined">
+                        &euro;{{ shoppingListStore.estimatedPrices[item.name.toLowerCase()].toFixed(2) }}
+                    </template>
+                    <template v-else>
+                        geen prijsdata
+                    </template>
+                </span>
                 <span class="item-freq">{{ item.frequency }}x gekocht</span>
                 <button
                     class="item-remove"
@@ -191,6 +229,18 @@ function addProduct(product: AhProductInterface): void {
     @apply text-gray-500 text-center py-8;
 }
 
+.estimated-total {
+    @apply flex justify-between items-center bg-white rounded-lg shadow p-3 mb-4;
+}
+
+.estimated-total-label {
+    @apply text-sm text-gray-500;
+}
+
+.estimated-total-value {
+    @apply text-xl font-bold text-blue-600;
+}
+
 .category-group {
     @apply mb-4;
 }
@@ -217,6 +267,22 @@ function addProduct(product: AhProductInterface): void {
 
 .list-item--checked .item-text {
     @apply line-through;
+}
+
+.item-text-group {
+    @apply flex flex-col;
+}
+
+.item-sources {
+    @apply text-xs text-gray-400;
+}
+
+.item-amounts {
+    @apply text-xs text-gray-400 font-normal;
+}
+
+.item-price {
+    @apply text-xs text-gray-400 whitespace-nowrap;
 }
 
 .item-freq {

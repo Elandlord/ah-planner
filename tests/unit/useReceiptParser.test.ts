@@ -4,6 +4,7 @@ import {
     extractTotal,
     extractDate,
     buildReceipt,
+    normalizeProductName,
 } from '~/composables/useReceiptParser';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
@@ -269,5 +270,117 @@ Brood  2.49`;
         const receipt = buildReceipt(text);
 
         expect(receipt.total).toBeCloseTo(3.78);
+    });
+});
+
+describe('normalizeProductName', () => {
+    it('lowercases and collapses whitespace', () => {
+        // #given
+        const name = '  AH   Halfvolle  Melk ';
+
+        // #when
+        const normalized = normalizeProductName(name);
+
+        // #then
+        expect(normalized).toBe('ah halfvolle melk');
+    });
+
+    it('strips a trailing size token', () => {
+        // #given
+        const name = 'AH Halfvolle melk 1L';
+
+        // #when
+        const normalized = normalizeProductName(name);
+
+        // #then
+        expect(normalized).toBe('ah halfvolle melk');
+    });
+
+    it('keeps a name without a trailing size intact', () => {
+        // #given
+        const name = 'AH ZUIVELSPR';
+
+        // #when
+        const normalized = normalizeProductName(name);
+
+        // #then
+        expect(normalized).toBe('ah zuivelspr');
+    });
+});
+
+describe('category overrides', () => {
+    it('prefers a stored override over the keyword dictionary', () => {
+        // #given
+        const overrides = { 'ah kokosmelk': ProductCategoryEnum.conserven };
+
+        // #when
+        const items = parseReceiptText('AH Kokosmelk  2.19', overrides);
+
+        // #then
+        expect(items[0].category).toBe(ProductCategoryEnum.conserven);
+    });
+
+    it('applies an override to a product the dictionary does not know', () => {
+        // #given
+        const overrides = { 'ah zuivelspr': ProductCategoryEnum.zuivel };
+
+        // #when
+        const items = parseReceiptText('AH ZUIVELSPR  1.39', overrides);
+
+        // #then
+        expect(items[0].category).toBe(ProductCategoryEnum.zuivel);
+    });
+
+    it('matches an override despite casing, spacing and a trailing size', () => {
+        // #given
+        const overrides = { 'ah zuivelspr': ProductCategoryEnum.zuivel };
+
+        // #when
+        const items = parseReceiptText('AH  Zuivelspr 500g  1.39', overrides);
+
+        // #then
+        expect(items[0].category).toBe(ProductCategoryEnum.zuivel);
+    });
+
+    it('falls back to the keyword dictionary when no override matches', () => {
+        // #given
+        const overrides = { 'ah zuivelspr': ProductCategoryEnum.zuivel };
+
+        // #when
+        const items = parseReceiptText('AH Boerenkool  1.49', overrides);
+
+        // #then
+        expect(items[0].category).toBe(ProductCategoryEnum.groente);
+    });
+
+    it('applies overrides through buildReceipt', () => {
+        // #given
+        const overrides = { 'ah havermout': ProductCategoryEnum.snacks };
+
+        // #when
+        const receipt = buildReceipt('AH Havermout  1.45', overrides);
+
+        // #then
+        expect(receipt.items[0].category).toBe(ProductCategoryEnum.snacks);
+    });
+});
+
+describe('keyword collisions', () => {
+    it('matches the longer, more specific keyword instead of a shorter contained one', () => {
+        // #given
+        // #when
+        const items = parseReceiptText('AH Kokosmelk  2.19');
+
+        // #then
+        expect(items[0].category).toBe(ProductCategoryEnum.conserven);
+    });
+
+    it('matches "bonen" instead of the shorter "ui" contained in "bruine"', () => {
+        // #given
+        // #when
+        const items = parseReceiptText('Bruine bonen  1.79');
+
+        // #then
+        expect(items[0].category).toBe(ProductCategoryEnum.conserven);
     });
 });
