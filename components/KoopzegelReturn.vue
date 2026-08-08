@@ -52,8 +52,8 @@ const result = computed(() => koopzegelReturn(receiptStore.receipts));
         </div>
 
         <p class="panel-note">
-            Een boekje kost &euro;{{ koopzegelBookCost.toFixed(2) }} aan zegels en levert
-            &euro;52,00 op. Het kopen van zegels staat niet als losse regel op de kassabon,
+            Een vol boekje is 490 zegels, dus &euro;{{ koopzegelBookCost.toFixed(2) }} inleg, en
+            levert &euro;52,00 op. Het kopen van zegels staat niet als losse regel op de kassabon,
             dus de inleg is berekend uit het aantal ingeleverde boekjes.
         </p>
     </div>

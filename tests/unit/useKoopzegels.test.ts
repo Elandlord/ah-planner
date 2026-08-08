@@ -33,9 +33,9 @@ describe('koopzegelReturn', () => {
     it('turns a redeemed book into its cost and gain', () => {
         const result = koopzegelReturn([receipt('a', 69.81, [{ method: 'KOOPZEGELS', amount: 52 }])]);
         expect(result.books).toBeCloseTo(1);
-        expect(result.invested).toBeCloseTo(50);
-        expect(result.gain).toBeCloseTo(2);
-        expect(result.returnPercentage).toBeCloseTo(4);
+        expect(result.invested).toBeCloseTo(49);
+        expect(result.gain).toBeCloseTo(3);
+        expect(result.returnPercentage).toBeCloseTo(6.12, 1);
     });
 
     it('scales over many books', () => {
@@ -43,8 +43,8 @@ describe('koopzegelReturn', () => {
             receipt(`r${index}`, 69.81, [{ method: 'KOOPZEGELS', amount: 52 }]));
         const result = koopzegelReturn(receipts);
         expect(result.redeemed).toBeCloseTo(1040);
-        expect(result.invested).toBeCloseTo(1000);
-        expect(result.gain).toBeCloseTo(40);
+        expect(result.invested).toBeCloseTo(980);
+        expect(result.gain).toBeCloseTo(60);
     });
 
     it('stays at zero without koopzegels', () => {

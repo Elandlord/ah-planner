@@ -3,7 +3,7 @@ import type ReceiptInterface from '~/types/ReceiptInterface';
 
 const METHOD = 'KOOPZEGELS';
 const BOOK_PAYOUT = 52;
-const ZEGELS_PER_BOOK = 500;
+const ZEGELS_PER_BOOK = 490;
 const ZEGEL_PRICE = 0.1;
 
 export const koopzegelBookCost = ZEGELS_PER_BOOK * ZEGEL_PRICE;
