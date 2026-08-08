@@ -4,6 +4,8 @@ interface MonthlySpendInterface {
     total: number;
     paidWithOwnMoney: number;
     paidWithSavings: number;
+    savingsByMethod: Record<string, number>;
+    discountTotal: number;
     receiptCount: number;
 }
 

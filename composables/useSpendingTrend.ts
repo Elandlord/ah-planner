@@ -42,10 +42,25 @@ export function monthlySpend(receipts: ReceiptInterface[]): MonthlySpendInterfac
                 total: group.total,
                 paidWithOwnMoney: breakdown.paidWithOwnMoney,
                 paidWithSavings: breakdown.paidWithSavings,
+                savingsByMethod: breakdown.savingsByMethod,
+                discountTotal: breakdown.discountTotal,
                 receiptCount: group.receipts.length,
             };
         })
         .reverse();
+}
+
+/** Every method that paid for something in this history, biggest contributor first. */
+export function savingsMethods(months: MonthlySpendInterface[]): string[] {
+    const totals = new Map<string, number>();
+    for (const month of months) {
+        for (const [method, amount] of Object.entries(month.savingsByMethod)) {
+            totals.set(method, (totals.get(method) ?? 0) + amount);
+        }
+    }
+    return [...totals.entries()]
+        .sort(([, a], [, b]) => b - a)
+        .map(([method]) => method);
 }
 
 export function useSpendingTrend() {

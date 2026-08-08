@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { linearTrend, monthlySpend, trendValueAt } from '~/composables/useSpendingTrend';
+import { linearTrend, monthlySpend, savingsMethods, trendValueAt } from '~/composables/useSpendingTrend';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import type ReceiptPaymentInterface from '~/types/ReceiptPaymentInterface';
@@ -39,6 +39,26 @@ describe('trendValueAt', () => {
     });
 });
 
+describe('savingsMethods', () => {
+    it('lists every method that paid, biggest first', () => {
+        const months = monthlySpend([
+            receipt('a', '2026-08-07T10:00:00.000Z', 69.81, [
+                { method: 'KOOPZEGELS', amount: 52 },
+                { method: 'EMBALLAGE', amount: 3 },
+                { method: 'PINNEN', amount: 14.81 },
+            ]),
+        ]);
+        expect(savingsMethods(months)).toEqual(['Koopzegels', 'Emballage']);
+    });
+
+    it('returns nothing when everything was paid with own money', () => {
+        const months = monthlySpend([
+            receipt('a', '2026-08-07T10:00:00.000Z', 69.81, [{ method: 'PINNEN', amount: 69.81 }]),
+        ]);
+        expect(savingsMethods(months)).toEqual([]);
+    });
+});
+
 describe('monthlySpend', () => {
     it('returns months oldest first so the chart reads left to right', () => {
         const months = monthlySpend([
@@ -57,6 +77,17 @@ describe('monthlySpend', () => {
         ]);
         expect(month.paidWithOwnMoney).toBeCloseTo(17.81);
         expect(month.paidWithSavings).toBeCloseTo(52);
+    });
+
+    it('keeps koopzegels and emballage apart per month', () => {
+        const [month] = monthlySpend([
+            receipt('a', '2026-08-07T10:00:00.000Z', 90.99, [
+                { method: 'KOOPZEGELS', amount: 52 },
+                { method: 'EMBALLAGE', amount: 3 },
+                { method: 'PINNEN', amount: 35.99 },
+            ]),
+        ]);
+        expect(month.savingsByMethod).toEqual({ Koopzegels: 52, Emballage: 3 });
     });
 
     it('counts the receipts per month', () => {
