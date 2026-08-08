@@ -1,4 +1,6 @@
 import type BackupInterface from '~/types/BackupInterface';
+import type ReceiptInterface from '~/types/ReceiptInterface';
+import type RecipeInterface from '~/types/RecipeInterface';
 import { useCategoryOverrideStore } from '~/stores/categoryOverrideStore';
 import { useReceiptStore } from '~/stores/receiptStore';
 import { useRecipeStore } from '~/stores/recipeStore';
@@ -8,6 +10,23 @@ import { downloadFile } from '~/composables/useReceiptExport';
 const BACKUP_VERSION = 1;
 
 export function isValidBackup(value: unknown): value is BackupInterface {
+function isValidReceipt(value: unknown): value is ReceiptInterface {
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
+    const receipt = value as Record<string, unknown>;
+    return Array.isArray(receipt.items) && typeof receipt.date === 'string';
+}
+
+function isValidRecipe(value: unknown): value is RecipeInterface {
+    if (typeof value !== 'object' || value === null) {
+        return false;
+    }
+    const recipe = value as Record<string, unknown>;
+    return typeof recipe.name === 'string' && Array.isArray(recipe.ingredients);
+}
+
+function isValidBackup(value: unknown): value is BackupInterface {
     if (typeof value !== 'object' || value === null) {
         return false;
     }
@@ -15,11 +34,13 @@ export function isValidBackup(value: unknown): value is BackupInterface {
     return (
         backup.version === BACKUP_VERSION &&
         Array.isArray(backup.receipts) &&
+        backup.receipts.every(isValidReceipt) &&
         Array.isArray(backup.savedRecipeIds) &&
         typeof backup.weekPlan === 'object' &&
         backup.weekPlan !== null &&
         Array.isArray(backup.shoppingList) &&
         Array.isArray(backup.userRecipes) &&
+        backup.userRecipes.every(isValidRecipe) &&
         typeof backup.categoryOverrides === 'object' &&
         backup.categoryOverrides !== null
     );

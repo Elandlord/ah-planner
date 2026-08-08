@@ -1,0 +1,56 @@
+import { computed } from 'vue';
+import { filterFreshItems } from '~/composables/useRecipeMatch';
+import { shelfLifeDaysFor } from '~/data/shelfLifeDays';
+import { useReceiptStore } from '~/stores/receiptStore';
+import type DatedReceiptItemInterface from '~/types/DatedReceiptItemInterface';
+
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+export const EXPIRING_SOON_THRESHOLD_DAYS = 2;
+
+export interface PantryItemInterface extends DatedReceiptItemInterface {
+    daysRemaining: number;
+    expiringSoon: boolean;
+}
+
+export function buildPantryItems(
+    items: DatedReceiptItemInterface[],
+    now: Date = new Date(),
+): PantryItemInterface[] {
+    return filterFreshItems(items, now).map((item) => {
+        const ageInDays = (now.getTime() - new Date(item.purchaseDate).getTime()) / DAY_IN_MS;
+        const daysRemaining = shelfLifeDaysFor(item.category) - ageInDays;
+
+        return {
+            ...item,
+            daysRemaining,
+            expiringSoon: daysRemaining <= EXPIRING_SOON_THRESHOLD_DAYS,
+        };
+    });
+}
+
+export function groupPantryItemsByCategory(
+    items: PantryItemInterface[],
+): Record<string, PantryItemInterface[]> {
+    const grouped: Record<string, PantryItemInterface[]> = {};
+    for (const item of items) {
+        if (!grouped[item.category]) {
+            grouped[item.category] = [];
+        }
+        grouped[item.category].push(item);
+    }
+    return grouped;
+}
+
+export function usePantry() {
+    const receiptStore = useReceiptStore();
+
+    const pantryItems = computed(() => buildPantryItems(receiptStore.itemsWithPurchaseDate));
+    const itemsByCategory = computed(() => groupPantryItemsByCategory(pantryItems.value));
+    const expiringSoonItems = computed(() => pantryItems.value.filter((item) => item.expiringSoon));
+
+    return {
+        pantryItems,
+        itemsByCategory,
+        expiringSoonItems,
+    };
+}

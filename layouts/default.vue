@@ -2,6 +2,7 @@
 const navItems = [
     { to: '/', label: 'Upload' },
     { to: '/receipts', label: 'Bonnen' },
+    { to: '/pantry', label: 'Voorraad' },
     { to: '/spending', label: 'Uitgaven' },
     { to: '/recipes', label: 'Recepten' },
     { to: '/shopping-list', label: 'Boodschappen' },

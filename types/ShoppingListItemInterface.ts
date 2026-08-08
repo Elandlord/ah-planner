@@ -7,6 +7,7 @@ interface ShoppingListItemInterface {
     checked: boolean;
     frequency: number;
     sources?: ShoppingListItemSourceInterface[];
+    amounts?: string[];
 }
 
 export type { ShoppingListItemInterface as default };

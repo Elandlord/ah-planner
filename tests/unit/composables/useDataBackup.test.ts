@@ -195,6 +195,41 @@ describe('useDataBackup', () => {
             );
         });
 
+        it('throws when a receipt entry has a malformed shape', () => {
+            // #given
+            const { importBackup } = useDataBackup();
+            const backup = makeBackup({ receipts: [{}] as unknown as ReceiptInterface[] });
+
+            // #when / #then
+            expect(() => importBackup(JSON.stringify(backup))).toThrow(
+                'Ongeldig back-upbestand: onverwachte structuur.',
+            );
+        });
+
+        it('throws when a receipt entry is not an object', () => {
+            // #given
+            const { importBackup } = useDataBackup();
+            const backup = makeBackup({
+                receipts: ['not-an-object'] as unknown as ReceiptInterface[],
+            });
+
+            // #when / #then
+            expect(() => importBackup(JSON.stringify(backup))).toThrow(
+                'Ongeldig back-upbestand: onverwachte structuur.',
+            );
+        });
+
+        it('throws when a user recipe entry has a malformed shape', () => {
+            // #given
+            const { importBackup } = useDataBackup();
+            const backup = makeBackup({ userRecipes: [{}] as unknown as RecipeInterface[] });
+
+            // #when / #then
+            expect(() => importBackup(JSON.stringify(backup))).toThrow(
+                'Ongeldig back-upbestand: onverwachte structuur.',
+            );
+        });
+
         it('does not modify the stores when the backup is invalid', () => {
             // #given
             useReceiptStore().receipts = [makeReceipt({ id: 'existing' })];
