@@ -4,18 +4,47 @@ import { useAhApi } from '~/composables/useAhApi';
 import type ProposalItemInterface from '~/types/ProposalItemInterface';
 import { useToast } from '~/composables/useToast';
 
-const { buildProposal } = useSuggestions();
+const PAGE_SIZE = 30;
+
+const { buildProposal, historyNames, resolveNames } = useSuggestions();
 const toast = useToast();
 const { fetchStatus } = useAhApi();
 
+const mode = ref<'voorstel' | 'bonus' | 'alles'>('voorstel');
 const items = ref<ProposalItemInterface[]>([]);
+const catalog = ref<ProposalItemInterface[]>([]);
+const resolvedCount = ref(0);
+const search = ref('');
 const loading = ref(true);
+const loadingMore = ref(false);
 const submitting = ref(false);
 const connected = ref(false);
 
-const selectedItems = computed(() =>
-    items.value.filter((item) => item.selected && item.product !== null),
-);
+const history = computed(() => historyNames());
+
+const filteredCatalog = computed(() => {
+    const term = search.value.trim().toLowerCase();
+    const withProduct = catalog.value.filter((item) => item.product !== null);
+    const matching = term.length === 0
+        ? withProduct
+        : withProduct.filter((item) =>
+            item.name.toLowerCase().includes(term)
+            || (item.product?.title ?? '').toLowerCase().includes(term));
+    if (mode.value === 'bonus') {
+        return matching.filter((item) => item.product?.isBonus);
+    }
+    return matching;
+});
+
+const visibleItems = computed(() => (mode.value === 'voorstel' ? items.value : filteredCatalog.value));
+
+const hasMore = computed(() => mode.value !== 'voorstel' && resolvedCount.value < history.value.length);
+
+const selectedItems = computed(() => {
+    const chosen = [...items.value, ...catalog.value]
+        .filter((item) => item.selected && item.product !== null);
+    return [...new Map(chosen.map((item) => [item.name, item])).values()];
+});
 
 const selectedTotal = computed(() =>
     selectedItems.value.reduce((sum, item) => {
@@ -25,7 +54,7 @@ const selectedTotal = computed(() =>
 );
 
 const bonusCount = computed(() =>
-    items.value.filter((item) => item.product?.isBonus).length,
+    visibleItems.value.filter((item) => item.product?.isBonus).length,
 );
 
 const submitDisabled = computed(() =>
@@ -42,6 +71,31 @@ async function load(): Promise<void> {
         toast.error('Voorstel laden mislukt.');
     } finally {
         loading.value = false;
+    }
+}
+
+async function loadMore(): Promise<void> {
+    if (loadingMore.value || !hasMore.value) {
+        return;
+    }
+    loadingMore.value = true;
+    try {
+        const next = history.value.slice(resolvedCount.value, resolvedCount.value + PAGE_SIZE);
+        const resolved = await resolveNames(next);
+        const known = new Set(catalog.value.map((item) => item.name));
+        catalog.value = [...catalog.value, ...resolved.filter((item) => !known.has(item.name))];
+        resolvedCount.value += next.length;
+    } catch {
+        toast.error('Meer producten laden mislukt.');
+    } finally {
+        loadingMore.value = false;
+    }
+}
+
+async function switchMode(next: 'voorstel' | 'bonus' | 'alles'): Promise<void> {
+    mode.value = next;
+    if (next !== 'voorstel' && catalog.value.length === 0) {
+        await loadMore();
     }
 }
 
@@ -88,18 +142,50 @@ onMounted(load);
             Op basis van je aankoopgeschiedenis, met bonusaanbiedingen voorgeselecteerd.
         </p>
 
+        <div class="mode-bar">
+            <div class="modes">
+                <button
+                    :class="['mode', { active: mode === 'voorstel' }]"
+                    @click="switchMode('voorstel')"
+                >
+                    Voorstel
+                </button>
+                <button
+                    :class="['mode', { active: mode === 'bonus' }]"
+                    @click="switchMode('bonus')"
+                >
+                    In de bonus
+                </button>
+                <button
+                    :class="['mode', { active: mode === 'alles' }]"
+                    @click="switchMode('alles')"
+                >
+                    Alles wat je koopt
+                </button>
+            </div>
+            <input
+                v-if="mode !== 'voorstel'"
+                v-model="search"
+                type="search"
+                class="search-input"
+                placeholder="Zoek in je geschiedenis..."
+            >
+        </div>
+
         <p
-            v-if="loading"
+            v-if="loading || (loadingMore && visibleItems.length === 0)"
             class="empty-state"
         >
-            Voorstel samenstellen...
+            {{ loading ? 'Voorstel samenstellen...' : 'Producten ophalen...' }}
         </p>
 
         <p
-            v-else-if="items.length === 0"
+            v-else-if="visibleItems.length === 0"
             class="empty-state"
         >
-            Nog niet genoeg aankoopgeschiedenis. Synchroniseer eerst je bonnen.
+            {{ mode === 'bonus'
+                ? 'Niets uit je geschiedenis is deze week in de bonus.'
+                : 'Nog niet genoeg aankoopgeschiedenis. Synchroniseer eerst je bonnen.' }}
         </p>
 
         <template v-else>
@@ -114,7 +200,7 @@ onMounted(load);
 
             <div class="proposal-list">
                 <div
-                    v-for="item in items"
+                    v-for="item in visibleItems"
                     :key="item.name"
                     class="proposal-card"
                     :class="{ 'proposal-card--off': !item.selected }"
@@ -180,6 +266,21 @@ onMounted(load);
                 </div>
             </div>
 
+            <div
+                v-if="hasMore"
+                class="load-more-wrapper"
+            >
+                <button
+                    class="load-more"
+                    :disabled="loadingMore"
+                    @click="loadMore"
+                >
+                    {{ loadingMore
+                        ? 'Bezig...'
+                        : `Meer laden (${resolvedCount} van ${history.length})` }}
+                </button>
+            </div>
+
             <div class="submit-bar">
                 <p
                     v-if="!connected"
@@ -223,6 +324,34 @@ onMounted(load);
 
 .summary-total {
     @apply ml-auto font-bold text-base text-gray-900;
+}
+
+.mode-bar {
+    @apply flex flex-wrap items-center justify-between gap-2 mb-3;
+}
+
+.modes {
+    @apply flex gap-1 bg-gray-100 rounded-lg p-1;
+}
+
+.mode {
+    @apply px-3 py-1.5 text-sm rounded-md text-gray-600;
+}
+
+.mode.active {
+    @apply bg-white text-gray-900 shadow-sm;
+}
+
+.search-input {
+    @apply px-3 py-1.5 text-sm border rounded-md w-56;
+}
+
+.load-more-wrapper {
+    @apply text-center mb-4;
+}
+
+.load-more {
+    @apply px-4 py-2 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50;
 }
 
 .proposal-list {

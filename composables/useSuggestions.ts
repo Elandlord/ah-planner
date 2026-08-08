@@ -81,7 +81,24 @@ export function isAbandoned(
     return daysSinceLast > medianIntervalDays * ABANDONED_INTERVAL_FACTOR;
 }
 
+/** Everything ever bought, most often bought first, so the whole history can be browsed. */
+export function historyPatterns(receipts: ReceiptInterface[], now: number): PurchasePattern[] {
+    return allPatterns(receipts, now).sort((a, b) => b.timesBought - a.timesBought);
+}
+
 export function buildPatterns(receipts: ReceiptInterface[], now: number): PurchasePattern[] {
+    return allPatterns(receipts, now)
+        .filter((pattern) => pattern.timesBought >= MIN_PURCHASES)
+        .filter((pattern) => !isAbandoned(
+            pattern.daysSinceLast,
+            pattern.medianIntervalDays,
+            pattern.timesBought,
+        ))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, MAX_SUGGESTIONS);
+}
+
+function allPatterns(receipts: ReceiptInterface[], now: number): PurchasePattern[] {
     const purchases = new Map<
         string,
         { dates: number[]; quantities: number[]; weights: Map<number, number>; label: string }
@@ -106,20 +123,12 @@ export function buildPatterns(receipts: ReceiptInterface[], now: number): Purcha
 
     for (const entry of purchases.values()) {
         const uniqueDates = [...new Set(entry.dates)].sort((a, b) => a - b);
-        if (uniqueDates.length < MIN_PURCHASES) {
-            continue;
-        }
         const intervals = uniqueDates
             .slice(1)
             .map((date, index) => (date - uniqueDates[index]) / MS_PER_DAY);
         const medianIntervalDays = Math.max(1, median(intervals));
         const daysSinceLast = Math.max(0, (now - uniqueDates[uniqueDates.length - 1]) / MS_PER_DAY);
         const timesBought = uniqueDates.length;
-
-        if (isAbandoned(daysSinceLast, medianIntervalDays, timesBought)) {
-            continue;
-        }
-
         const weightedTimesBought = uniqueDates
             .reduce((sum, date) => sum + (entry.weights.get(date) ?? 1), 0);
         const ratio = overdueRatio(daysSinceLast, medianIntervalDays);
@@ -135,16 +144,13 @@ export function buildPatterns(receipts: ReceiptInterface[], now: number): Purcha
         });
     }
 
-    return patterns
-        .sort((a, b) => b.score - a.score)
-        .slice(0, MAX_SUGGESTIONS);
+    return patterns;
 }
 
 export function useSuggestions() {
     const receiptStore = useReceiptStore();
 
-    async function buildProposal(): Promise<ProposalItemInterface[]> {
-        const patterns = buildPatterns(receiptStore.receipts, Date.now());
+    async function resolve(patterns: PurchasePattern[], preselect: boolean): Promise<ProposalItemInterface[]> {
         if (patterns.length === 0) {
             return [];
         }
@@ -168,7 +174,7 @@ export function useSuggestions() {
                 product,
                 bonusMechanism: resolved?.bonusMechanism ?? null,
                 quantity: pattern.typicalQuantity,
-                selected: pattern.overdueRatio >= threshold,
+                selected: preselect && pattern.overdueRatio >= threshold,
                 timesBought: pattern.timesBought,
                 daysSinceLast: pattern.daysSinceLast,
                 medianIntervalDays: pattern.medianIntervalDays,
@@ -176,5 +182,17 @@ export function useSuggestions() {
         });
     }
 
-    return { buildProposal };
+    function buildProposal(): Promise<ProposalItemInterface[]> {
+        return resolve(buildPatterns(receiptStore.receipts, Date.now()), true);
+    }
+
+    function historyNames(): PurchasePattern[] {
+        return historyPatterns(receiptStore.receipts, Date.now());
+    }
+
+    function resolveNames(patterns: PurchasePattern[]): Promise<ProposalItemInterface[]> {
+        return resolve(patterns, false);
+    }
+
+    return { buildProposal, historyNames, resolveNames };
 }

@@ -1,7 +1,8 @@
 import { ahFetch, getAnonymousAccessToken, getStoredTokens, getValidAccessToken } from '~~/server/utils/ahApi';
 import type AhProductInterface from '~/types/AhProductInterface';
 
-const MAX_CANDIDATES = 20;
+const MAX_CANDIDATES = 60;
+const CACHE_KEY = 'products.json';
 
 interface SearchProduct {
     webshopId?: number;
@@ -40,33 +41,66 @@ function mapProduct(product: SearchProduct): AhProductInterface {
     };
 }
 
+/** Bonus prices change weekly, so a cached lookup is only good for the day it was made. */
+const CACHE_TTL_MS = 12 * 60 * 60 * 1000;
+
+interface CachedSuggestion extends ResolvedSuggestion {
+    storedAt: number;
+}
+
 export default defineEventHandler(async (event) => {
     const body = await readBody<{ names?: string[] }>(event);
-    const names = (body.names ?? []).slice(0, MAX_CANDIDATES);
+    const names = [...new Set(body.names ?? [])].slice(0, MAX_CANDIDATES);
     if (names.length === 0) {
         return { suggestions: [] };
+    }
+
+    const storage = useStorage('ah');
+    const cache = (await storage.getItem<Record<string, CachedSuggestion>>(CACHE_KEY)) ?? {};
+    const fresh = Date.now() - CACHE_TTL_MS;
+
+    const suggestions: ResolvedSuggestion[] = [];
+    const missing: string[] = [];
+    for (const name of names) {
+        const cached = cache[name];
+        if (cached && cached.storedAt > fresh) {
+            suggestions.push({
+                query: cached.query,
+                product: cached.product,
+                bonusMechanism: cached.bonusMechanism,
+            });
+            continue;
+        }
+        missing.push(name);
+    }
+
+    if (missing.length === 0) {
+        return { suggestions };
     }
 
     const stored = await getStoredTokens();
     const accessToken = stored ? await getValidAccessToken() : await getAnonymousAccessToken();
 
-    const suggestions: ResolvedSuggestion[] = [];
-    for (const name of names) {
+    for (const name of missing) {
+        let resolved: ResolvedSuggestion = { query: name, product: null, bonusMechanism: null };
         try {
             const response = await ahFetch<SearchResponse>(
                 `/mobile-services/product/search/v2?query=${encodeURIComponent(name)}&sortOn=RELEVANCE`,
                 accessToken,
             );
             const first = response.products?.length ? response.products[0] : null;
-            suggestions.push({
+            resolved = {
                 query: name,
                 product: first ? mapProduct(first) : null,
                 bonusMechanism: first?.bonusMechanism ?? null,
-            });
+            };
         } catch {
-            suggestions.push({ query: name, product: null, bonusMechanism: null });
+            resolved = { query: name, product: null, bonusMechanism: null };
         }
+        cache[name] = { ...resolved, storedAt: Date.now() };
+        suggestions.push(resolved);
     }
 
+    await storage.setItem(CACHE_KEY, cache);
     return { suggestions };
 });
