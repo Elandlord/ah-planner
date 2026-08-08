@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildShoppingItems, scaleAmount, scalePacks, servingsFactor } from '~/composables/useRecipeShopping';
+import {
+    buildShoppingItems,
+    isPantryIngredient,
+    parseAmount,
+    productQueryFor,
+    scaleAmount,
+    scalePacks,
+    servingsFactor,
+} from '~/composables/useRecipeShopping';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 import type RecipeInterface from '~/types/RecipeInterface';
 
@@ -88,9 +96,13 @@ describe('scalePacks', () => {
 });
 
 describe('buildShoppingItems', () => {
-    it('skips ingredients that have no product to buy', () => {
+    it('offers every ingredient, also the ones without a written product query', () => {
         const items = buildShoppingItems(GNOCCHI, 4, new Map());
-        expect(items.map((item) => item.name)).toEqual(['aardappelgnocchi', 'knoflook']);
+        expect(items.map((item) => item.name)).toEqual([
+            'aardappelgnocchi',
+            'knoflook',
+            'zout en peper',
+        ]);
     });
 
     it('scales the amounts to the chosen number of people', () => {
@@ -128,5 +140,60 @@ describe('scalePacks for pantry staples', () => {
 
     it('still scales the amount used in the recipe', () => {
         expect(scaleAmount(nutmeg, 3)).toBe('3 tl');
+    });
+});
+
+
+describe('parseAmount', () => {
+    it('reads a weight written without a space', () => {
+        expect(parseAmount('500g')).toEqual({ quantity: 500, unit: 'g' });
+    });
+
+    it('reads a count and calls it stuks', () => {
+        expect(parseAmount('1 stuk')).toEqual({ quantity: 1, unit: 'stuk' });
+    });
+
+    it('returns nothing for an amount without a number', () => {
+        expect(parseAmount('naar smaak')).toBeNull();
+    });
+});
+
+describe('productQueryFor', () => {
+    it('uses the written query when there is one', () => {
+        expect(productQueryFor(GNOCCHI.ingredients[0])).toBe('AH Gnocchi');
+    });
+
+    it('derives a query from the ingredient name otherwise', () => {
+        expect(productQueryFor({
+            name: 'boerenkool',
+            amount: '500g',
+            category: ProductCategoryEnum.groente,
+        })).toBe('AH Boerenkool');
+    });
+
+    it('drops the preparation note after a comma', () => {
+        expect(productQueryFor({
+            name: 'ui, fijngesneden',
+            amount: '1 stuk',
+            category: ProductCategoryEnum.groente,
+        })).toBe('AH Ui');
+    });
+});
+
+describe('isPantryIngredient', () => {
+    it('recognises a cupboard staple by name', () => {
+        expect(isPantryIngredient({
+            name: 'olijfolie',
+            amount: 'scheutje',
+            category: ProductCategoryEnum.kruiden,
+        })).toBe(true);
+    });
+
+    it('treats fresh produce as something to buy again', () => {
+        expect(isPantryIngredient({
+            name: 'boerenkool',
+            amount: '500g',
+            category: ProductCategoryEnum.groente,
+        })).toBe(false);
     });
 });

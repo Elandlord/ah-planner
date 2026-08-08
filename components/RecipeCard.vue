@@ -1,17 +1,34 @@
 <script setup lang="ts">
 import type RecipeInterface from '~/types/RecipeInterface';
 
-const { recipe, isSaved } = defineProps<{
+const { recipe, isSaved, days, startOpen = false } = defineProps<{
     recipe: RecipeInterface;
     isSaved: boolean;
+    days: string[];
+    startOpen?: boolean;
 }>();
 
 const emit = defineEmits<{
     toggleSave: [];
-    assign: [];
+    plan: [day: string];
 }>();
 
-const isExpanded = ref(false);
+const isExpanded = ref(startOpen);
+const planDay = ref('');
+
+function plan(): void {
+    if (!planDay.value) {
+        return;
+    }
+    emit('plan', planDay.value);
+    planDay.value = '';
+}
+
+watch(() => startOpen, (open) => {
+    if (open) {
+        isExpanded.value = true;
+    }
+});
 </script>
 
 <template>
@@ -47,12 +64,39 @@ const isExpanded = ref(false);
             </span>
         </div>
 
-        <button
-            class="expand-btn"
-            @click="isExpanded = !isExpanded"
-        >
-            {{ isExpanded ? 'Minder tonen' : 'Meer tonen' }}
-        </button>
+        <div class="card-actions">
+            <button
+                class="expand-btn"
+                @click="isExpanded = !isExpanded"
+            >
+                {{ isExpanded ? 'Minder tonen' : 'Meer tonen' }}
+            </button>
+
+            <div class="plan-control">
+                <select
+                    v-model="planDay"
+                    class="plan-select"
+                >
+                    <option value="">
+                        Zet op dag...
+                    </option>
+                    <option
+                        v-for="day in days"
+                        :key="day"
+                        :value="day"
+                    >
+                        {{ day }}
+                    </option>
+                </select>
+                <button
+                    class="plan-btn"
+                    :disabled="!planDay"
+                    @click="plan"
+                >
+                    Inplannen
+                </button>
+            </div>
+        </div>
 
         <div
             v-if="isExpanded"
@@ -86,12 +130,6 @@ const isExpanded = ref(false);
                     </li>
                 </ol>
             </div>
-            <button
-                class="assign-btn"
-                @click="emit('assign')"
-            >
-                Toevoegen aan weekplan
-            </button>
         </div>
     </div>
 </template>
@@ -131,6 +169,22 @@ const isExpanded = ref(false);
 
 .recipe-tag {
     @apply bg-gray-100 px-2 py-0.5 rounded;
+}
+
+.card-actions {
+    @apply flex flex-wrap items-center justify-between gap-2;
+}
+
+.plan-control {
+    @apply flex items-center gap-2;
+}
+
+.plan-select {
+    @apply px-2 py-1 text-sm border rounded-md;
+}
+
+.plan-btn {
+    @apply px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed;
 }
 
 .expand-btn {

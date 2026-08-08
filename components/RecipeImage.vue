@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type RecipeInterface from '~/types/RecipeInterface';
-import { useRecipeShopping } from '~/composables/useRecipeShopping';
+import { productQueryFor, useRecipeShopping } from '~/composables/useRecipeShopping';
 
 const { recipe } = defineProps<{ recipe: RecipeInterface }>();
 
@@ -29,17 +29,35 @@ const initials = computed(() =>
         .join(''));
 
 /** No recipe photo is shipped, so the hero ingredient's product shot stands in. */
+/** A local photo in public/recipe-images wins; it never leaves this machine. */
+function localPhotoUrl(): string {
+    return `/recipe-images/${recipe.id}.jpg`;
+}
+
+function useLocalPhoto(): Promise<boolean> {
+    return new Promise((resolve) => {
+        const probe = new Image();
+        probe.onload = () => resolve(true);
+        probe.onerror = () => resolve(false);
+        probe.src = localPhotoUrl();
+    });
+}
+
 async function loadHeroImage(): Promise<void> {
     if (recipe.imageUrl) {
         productImage.value = recipe.imageUrl;
         return;
     }
+    if (await useLocalPhoto()) {
+        productImage.value = localPhotoUrl();
+        return;
+    }
     try {
         const resolved = await resolveIngredients(recipe);
-        const hero = recipe.ingredients.find((ingredient) =>
-            ingredient.productQuery && resolved.get(ingredient.productQuery)?.product?.imageUrl);
-        productImage.value = hero?.productQuery
-            ? resolved.get(hero.productQuery)?.product?.imageUrl ?? null
+        const hero = recipe.ingredients
+            .find((ingredient) => resolved.get(productQueryFor(ingredient))?.product?.imageUrl);
+        productImage.value = hero
+            ? resolved.get(productQueryFor(hero))?.product?.imageUrl ?? null
             : null;
     } catch {
         productImage.value = null;

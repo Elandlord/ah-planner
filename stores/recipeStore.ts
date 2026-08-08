@@ -74,6 +74,25 @@ export const useRecipeStore = defineStore('recipe', {
             );
         },
 
+        /** Dropping a day on another swaps them, so an occupied day is never silently overwritten. */
+        swapDays(from: string, to: string): void {
+            const moving = this.weekPlan[from];
+            if (!moving || from === to) {
+                return;
+            }
+            const displaced = this.weekPlan[to];
+            this.weekPlan[to] = moving;
+            if (displaced) {
+                this.weekPlan[from] = displaced;
+            } else {
+                delete this.weekPlan[from];
+            }
+            localStorage.setItem(
+                'ah-planner-week-plan',
+                JSON.stringify(this.weekPlan),
+            );
+        },
+
         removeFromDay(day: string): void {
             delete this.weekPlan[day];
             localStorage.setItem(
