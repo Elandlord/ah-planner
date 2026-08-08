@@ -5,18 +5,28 @@ import { recipes } from '~/data/recipes';
 
 export const useRecipeStore = defineStore('recipe', {
     state: () => ({
-        allRecipes: recipes as RecipeInterface[],
+        builtInRecipes: recipes as RecipeInterface[],
+        importedRecipes: JSON.parse(
+            localStorage.getItem('ah-planner-imported-recipes') ?? '[]',
+        ) as RecipeInterface[],
         savedRecipeIds: JSON.parse(
             localStorage.getItem('ah-planner-saved-recipes') ?? '[]',
         ) as string[],
         weekPlan: JSON.parse(
             localStorage.getItem('ah-planner-week-plan') ?? '{}',
         ) as Record<string, string>,
+        household: JSON.parse(
+            localStorage.getItem('ah-planner-household') ?? '{"adults":2,"children":1}',
+        ) as { adults: number; children: number },
     }),
 
     getters: {
-        savedRecipes: (state): RecipeInterface[] =>
-            state.allRecipes.filter((r) => state.savedRecipeIds.includes(r.id)),
+        /** Imported recipes stay on this machine, so they live in the browser, not in the repo. */
+        allRecipes: (state): RecipeInterface[] => [...state.importedRecipes, ...state.builtInRecipes],
+
+        savedRecipes(): RecipeInterface[] {
+            return this.allRecipes.filter((r) => this.savedRecipeIds.includes(r.id));
+        },
 
         suggestedRecipes(): RecipeInterface[] {
             const receiptStore = useReceiptStore();
@@ -43,10 +53,10 @@ export const useRecipeStore = defineStore('recipe', {
                 .map((s) => s.recipe);
         },
 
-        weekPlanRecipes(state): Record<string, RecipeInterface | undefined> {
+        weekPlanRecipes(): Record<string, RecipeInterface | undefined> {
             const result: Record<string, RecipeInterface | undefined> = {};
-            for (const [day, recipeId] of Object.entries(state.weekPlan)) {
-                result[day] = state.allRecipes.find((r) => r.id === recipeId);
+            for (const [day, recipeId] of Object.entries(this.weekPlan)) {
+                result[day] = this.allRecipes.find((r) => r.id === recipeId);
             }
             return result;
         },
@@ -66,12 +76,52 @@ export const useRecipeStore = defineStore('recipe', {
             );
         },
 
+        importRecipe(recipe: RecipeInterface): void {
+            const existing = this.importedRecipes.findIndex((r) => r.id === recipe.id);
+            if (existing === -1) {
+                this.importedRecipes.unshift(recipe);
+            } else {
+                this.importedRecipes[existing] = recipe;
+            }
+            localStorage.setItem(
+                'ah-planner-imported-recipes',
+                JSON.stringify(this.importedRecipes),
+            );
+        },
+
+        removeImportedRecipe(recipeId: string): void {
+            this.importedRecipes = this.importedRecipes.filter((r) => r.id !== recipeId);
+            localStorage.setItem(
+                'ah-planner-imported-recipes',
+                JSON.stringify(this.importedRecipes),
+            );
+        },
+
         assignToDay(day: string, recipeId: string): void {
-            this.weekPlan[day] = recipeId;
+            this.assignToDays([day], recipeId);
+        },
+
+        assignToDays(days: string[], recipeId: string): void {
+            for (const day of days) {
+                this.weekPlan[day] = recipeId;
+            }
             localStorage.setItem(
                 'ah-planner-week-plan',
                 JSON.stringify(this.weekPlan),
             );
+        },
+
+        replaceWeekPlan(plan: Record<string, string>): void {
+            this.weekPlan = plan;
+            localStorage.setItem(
+                'ah-planner-week-plan',
+                JSON.stringify(this.weekPlan),
+            );
+        },
+
+        setHousehold(adults: number, children: number): void {
+            this.household = { adults: Math.max(0, adults), children: Math.max(0, children) };
+            localStorage.setItem('ah-planner-household', JSON.stringify(this.household));
         },
 
         /** Dropping a day on another swaps them, so an occupied day is never silently overwritten. */

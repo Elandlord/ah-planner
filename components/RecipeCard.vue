@@ -10,18 +10,24 @@ const { recipe, isSaved, days, startOpen = false } = defineProps<{
 
 const emit = defineEmits<{
     toggleSave: [];
-    plan: [day: string];
+    plan: [days: string[]];
 }>();
 
 const isExpanded = ref(startOpen);
-const planDay = ref('');
+const planDays = ref<string[]>([]);
+
+function toggleDay(day: string): void {
+    planDays.value = planDays.value.includes(day)
+        ? planDays.value.filter((selected) => selected !== day)
+        : [...planDays.value, day];
+}
 
 function plan(): void {
-    if (!planDay.value) {
+    if (planDays.value.length === 0) {
         return;
     }
-    emit('plan', planDay.value);
-    planDay.value = '';
+    emit('plan', [...planDays.value]);
+    planDays.value = [];
 }
 
 watch(() => startOpen, (open) => {
@@ -73,24 +79,19 @@ watch(() => startOpen, (open) => {
             </button>
 
             <div class="plan-control">
-                <select
-                    v-model="planDay"
-                    class="plan-select"
+                <button
+                    v-for="day in days"
+                    :key="day"
+                    class="day-chip"
+                    :class="{ 'day-chip--on': planDays.includes(day) }"
+                    :title="day"
+                    @click="toggleDay(day)"
                 >
-                    <option value="">
-                        Zet op dag...
-                    </option>
-                    <option
-                        v-for="day in days"
-                        :key="day"
-                        :value="day"
-                    >
-                        {{ day }}
-                    </option>
-                </select>
+                    {{ day.slice(0, 2) }}
+                </button>
                 <button
                     class="plan-btn"
-                    :disabled="!planDay"
+                    :disabled="planDays.length === 0"
                     @click="plan"
                 >
                     Inplannen
@@ -179,8 +180,12 @@ watch(() => startOpen, (open) => {
     @apply flex items-center gap-2;
 }
 
-.plan-select {
-    @apply px-2 py-1 text-sm border rounded-md;
+.day-chip {
+    @apply w-8 h-7 text-xs rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50;
+}
+
+.day-chip--on {
+    @apply bg-blue-600 border-blue-600 text-white hover:bg-blue-700;
 }
 
 .plan-btn {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useRecipeStore } from '~/stores/recipeStore';
 import { filterRecipes, recipeCategories } from '~/composables/useRecipeFilters';
+import { buildWeekPlan, pickRandom, recipesNeeded } from '~/composables/useWeekPlan';
 import { useToast } from '~/composables/useToast';
 
 const DAYS = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
@@ -28,9 +29,10 @@ const suggested = computed(() =>
 const all = computed(() => filterRecipes(recipeStore.allRecipes, category.value, search.value));
 const saved = computed(() => filterRecipes(recipeStore.savedRecipes, category.value, search.value));
 
-function planRecipe(recipeId: string, day: string): void {
-    recipeStore.assignToDay(day, recipeId);
-    toast.success(`${recipeStore.allRecipes.find((r) => r.id === recipeId)?.name} staat op ${day}.`);
+function planRecipe(recipeId: string, days: string[]): void {
+    recipeStore.assignToDays(days, recipeId);
+    const name = recipeStore.allRecipes.find((r) => r.id === recipeId)?.name;
+    toast.success(`${name} staat op ${days.join(', ')}.`);
 }
 
 function openRecipe(recipeId: string): void {
@@ -41,6 +43,21 @@ function openRecipe(recipeId: string): void {
     nextTick(() => {
         document.getElementById(`recipe-${recipeId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
+}
+
+const runLength = ref(2);
+
+function randomiseWeek(): void {
+    const pool = recipeStore.savedRecipes.length >= recipesNeeded(DAYS.length, runLength.value)
+        ? recipeStore.savedRecipes
+        : recipeStore.allRecipes;
+    const picked = pickRandom(pool, recipesNeeded(DAYS.length, runLength.value), Math.random);
+    if (picked.length === 0) {
+        toast.error('Geen recepten om uit te kiezen.');
+        return;
+    }
+    recipeStore.replaceWeekPlan(buildWeekPlan(DAYS, picked, runLength.value));
+    toast.success(`Week gevuld met ${picked.length} recepten.`);
 }
 
 function startDrag(day: string): void {
@@ -73,6 +90,8 @@ function dropOn(day: string): void {
             </button>
         </div>
 
+        <RecipeImporter v-if="activeTab !== 'weekplan'" />
+
         <div
             v-if="activeTab !== 'weekplan'"
             class="filter-bar"
@@ -100,6 +119,56 @@ function dropOn(day: string): void {
             v-if="activeTab === 'weekplan'"
             class="week-plan"
         >
+            <div class="week-controls">
+                <div class="household">
+                    <span class="control-label">Huishouden</span>
+                    <label class="field">
+                        volwassenen
+                        <input
+                            type="number"
+                            min="0"
+                            class="number-input"
+                            :value="recipeStore.household.adults"
+                            @input="recipeStore.setHousehold(
+                                Number(($event.target as HTMLInputElement).value),
+                                recipeStore.household.children,
+                            )"
+                        >
+                    </label>
+                    <label class="field">
+                        kinderen
+                        <input
+                            type="number"
+                            min="0"
+                            class="number-input"
+                            :value="recipeStore.household.children"
+                            @input="recipeStore.setHousehold(
+                                recipeStore.household.adults,
+                                Number(($event.target as HTMLInputElement).value),
+                            )"
+                        >
+                    </label>
+                </div>
+                <div class="randomise">
+                    <label class="field">
+                        dagen per recept
+                        <input
+                            v-model.number="runLength"
+                            type="number"
+                            min="1"
+                            max="7"
+                            class="number-input"
+                        >
+                    </label>
+                    <button
+                        class="randomise-btn"
+                        @click="randomiseWeek"
+                    >
+                        Vul de week ({{ recipesNeeded(DAYS.length, runLength) }} recepten)
+                    </button>
+                </div>
+            </div>
+
             <p class="week-hint">
                 Sleep een dag op een andere dag om te ruilen. Klik op een recept om het te openen.
             </p>
@@ -137,6 +206,8 @@ function dropOn(day: string): void {
                     </button>
                 </div>
             </div>
+
+            <WeekPlanShopping />
         </div>
 
         <div
@@ -247,6 +318,31 @@ function dropOn(day: string): void {
 
 .week-plan {
     @apply bg-white rounded-lg shadow p-4;
+}
+
+.week-controls {
+    @apply flex flex-wrap items-end justify-between gap-3 mb-3;
+}
+
+.household,
+.randomise {
+    @apply flex flex-wrap items-end gap-3;
+}
+
+.control-label {
+    @apply text-sm font-medium text-gray-700;
+}
+
+.field {
+    @apply flex items-center gap-1.5 text-xs text-gray-500;
+}
+
+.number-input {
+    @apply w-14 px-2 py-1 text-sm border rounded-md;
+}
+
+.randomise-btn {
+    @apply px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700;
 }
 
 .week-hint {
