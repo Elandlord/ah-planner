@@ -6,6 +6,7 @@ import { useReceiptStore } from '~/stores/receiptStore';
 import { useProductCategories } from '~/composables/useProductCategories';
 
 const SYNCED_ID_PREFIX = 'ah-';
+const MAX_SYNC_PASSES = 6;
 
 function toReceipt(
     synced: AhSyncedReceiptInterface,
@@ -72,7 +73,7 @@ export function useAhApi() {
         return Object.values(ProductCategoryEnum).find((category) => category === value) ?? null;
     }
 
-    async function syncReceipts(): Promise<number> {
+    async function syncPass(): Promise<number> {
         const response = await $fetch<{ receipts: AhSyncedReceiptInterface[] }>(
             '/api/ah/receipts',
             { query: { knownIds: completeSyncedIds() } },
@@ -93,6 +94,19 @@ export function useAhApi() {
             receiptStore.addReceipt(receipt);
         }
         return response.receipts.length;
+    }
+
+    /** AH returns a limited page per call, so keep asking until a pass brings nothing back. */
+    async function syncReceipts(): Promise<number> {
+        let total = 0;
+        for (let pass = 0; pass < MAX_SYNC_PASSES; pass += 1) {
+            const count = await syncPass();
+            total += count;
+            if (count === 0) {
+                break;
+            }
+        }
+        return total;
     }
 
     async function searchProducts(query: string): Promise<AhProductInterface[]> {

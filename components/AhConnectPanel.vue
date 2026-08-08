@@ -70,7 +70,7 @@ async function sync(): Promise<void> {
     try {
         const count = await syncReceipts();
         message.value = count > 0
-            ? `${count} nieuwe bonnen opgehaald.`
+            ? `${count} bonnen opgehaald of bijgewerkt.`
             : 'Geen nieuwe bonnen gevonden.';
     } catch {
         message.value = 'Synchroniseren mislukt. Verbind opnieuw als dit blijft gebeuren.';
@@ -95,14 +95,22 @@ onUnmounted(stopPolling);
                     {{ statusLabel }}
                 </p>
             </div>
-            <button
-                v-if="connected"
-                class="sync-btn"
-                :disabled="busy"
-                @click="sync"
-            >
-                {{ busy ? 'Bezig...' : 'Bonnen synchroniseren' }}
-            </button>
+            <div class="header-actions">
+                <NuxtLink
+                    to="/upload"
+                    class="upload-btn"
+                >
+                    Bon uploaden
+                </NuxtLink>
+                <button
+                    v-if="connected"
+                    class="sync-btn"
+                    :disabled="busy"
+                    @click="sync"
+                >
+                    {{ busy ? 'Bezig...' : 'Bonnen synchroniseren' }}
+                </button>
+            </div>
         </div>
 
         <div
@@ -150,6 +158,14 @@ onUnmounted(stopPolling);
 
 .status-off {
     @apply text-sm text-gray-500;
+}
+
+.header-actions {
+    @apply flex items-center gap-2;
+}
+
+.upload-btn {
+    @apply px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50;
 }
 
 .sync-btn {
