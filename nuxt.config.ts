@@ -6,6 +6,9 @@ export default defineNuxtConfig({
         '@nuxtjs/tailwindcss',
     ],
     ssr: false,
+    routeRules: {
+        '/proposal': { redirect: '/shopping-list' },
+    },
     nitro: {
         storage: {
             ah: {

@@ -1,11 +1,10 @@
 <script setup lang="ts">
 const navItems = [
-    { to: '/', label: 'Upload' },
+    { to: '/', label: 'Home' },
     { to: '/receipts', label: 'Bonnen' },
     { to: '/spending', label: 'Uitgaven' },
     { to: '/recipes', label: 'Recepten' },
     { to: '/shopping-list', label: 'Boodschappen' },
-    { to: '/proposal', label: 'Voorstel' },
 ];
 </script>
 

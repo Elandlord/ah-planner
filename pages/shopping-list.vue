@@ -7,6 +7,7 @@ import type AhProductInterface from '~/types/AhProductInterface';
 const shoppingListStore = useShoppingListStore();
 const { categorizeProduct } = useReceiptParser();
 
+const activeTab = ref<'voorstel' | 'lijst'>('voorstel');
 const newItemName = ref('');
 const newItemCategory = ref<ProductCategoryEnum>(ProductCategoryEnum.overig);
 
@@ -39,9 +40,27 @@ function addProduct(product: AhProductInterface): void {
 <template>
     <div>
         <h1 class="page-title">
-            Boodschappenlijst
+            Boodschappen
         </h1>
 
+        <div class="tabs">
+            <button
+                :class="['tab', { active: activeTab === 'voorstel' }]"
+                @click="activeTab = 'voorstel'"
+            >
+                Voorstel
+            </button>
+            <button
+                :class="['tab', { active: activeTab === 'lijst' }]"
+                @click="activeTab = 'lijst'"
+            >
+                Mijn lijst
+            </button>
+        </div>
+
+        <ProposalPanel v-if="activeTab === 'voorstel'" />
+
+        <template v-else>
         <div class="add-form">
             <AhProductSearchInput
                 v-model="newItemName"
@@ -70,12 +89,6 @@ function addProduct(product: AhProductInterface): void {
         </div>
 
         <div class="actions">
-            <button
-                class="action-btn"
-                @click="shoppingListStore.generateFromHistory()"
-            >
-                Genereer uit aankoopgeschiedenis
-            </button>
             <button
                 v-if="shoppingListStore.checkedItems.length > 0"
                 class="action-btn-danger"
@@ -124,10 +137,23 @@ function addProduct(product: AhProductInterface): void {
                 </button>
             </div>
         </div>
+        </template>
     </div>
 </template>
 
 <style scoped>
+.tabs {
+    @apply flex gap-1 bg-gray-100 rounded-lg p-1 mb-4 w-fit;
+}
+
+.tab {
+    @apply px-4 py-1.5 text-sm rounded-md text-gray-600;
+}
+
+.tab.active {
+    @apply bg-white text-gray-900 shadow-sm;
+}
+
 .page-title {
     @apply text-2xl font-bold mb-4;
 }

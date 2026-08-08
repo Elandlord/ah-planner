@@ -84,9 +84,6 @@ onMounted(load);
 
 <template>
     <div>
-        <h1 class="page-title">
-            Boodschappen Voorstel
-        </h1>
         <p class="page-subtitle">
             Op basis van je aankoopgeschiedenis, met bonusaanbiedingen voorgeselecteerd.
         </p>
