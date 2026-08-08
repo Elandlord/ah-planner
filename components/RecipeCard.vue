@@ -17,7 +17,8 @@ const isExpanded = ref(false);
 <template>
     <div class="recipe-card">
         <div class="recipe-header">
-            <div>
+            <RecipeImage :recipe="recipe" />
+            <div class="recipe-heading">
                 <h3 class="recipe-name">
                     {{ recipe.name }}
                 </h3>
@@ -54,9 +55,11 @@ const isExpanded = ref(false);
         </button>
 
         <div
-            v-show="isExpanded"
+            v-if="isExpanded"
             class="recipe-details"
         >
+            <RecipeShoppingPanel :recipe="recipe" />
+
             <div class="ingredients-section">
                 <h4 class="section-title">
                     Ingrediënten
@@ -98,8 +101,12 @@ const isExpanded = ref(false);
     @apply bg-white rounded-lg shadow p-4;
 }
 
+.recipe-heading {
+    @apply flex-1 min-w-0;
+}
+
 .recipe-header {
-    @apply flex justify-between items-start;
+    @apply flex justify-between items-start gap-3;
 }
 
 .recipe-name {

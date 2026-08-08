@@ -9,6 +9,7 @@ interface RecipeInterface {
     ingredients: RecipeIngredientInterface[];
     instructions: string[];
     tags: string[];
+    imageUrl?: string;
 }
 
 export type { RecipeInterface as default };
