@@ -81,6 +81,8 @@ const topItems = computed(() =>
 
             <MonthlySpendChart :months="months" />
 
+            <KoopzegelReturn />
+
             <div
                 v-if="savingsEntries.length > 0"
                 class="section"
