@@ -172,7 +172,7 @@ describe('useDataBackup', () => {
                 version: 1,
                 weekPlan: { woensdag: 'recipe-1' },
             } as Partial<BackupInterface>);
-            delete (backup as Record<string, unknown>).weekPlans;
+            delete (backup as unknown as Record<string, unknown>).weekPlans;
 
             // #when
             importBackup(JSON.stringify(backup));

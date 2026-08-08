@@ -28,7 +28,9 @@ describe('ReceiptItemRow', () => {
             const wrapper = mountItemRow(makeItem());
 
             // #when
-            const optionValues = wrapper.findAll('.item-category option').map((option) => option.element.value);
+            const optionValues = wrapper
+                .findAll<HTMLOptionElement>('.item-category option')
+                .map((option) => option.element.value);
 
             // #then
             expect(optionValues).toEqual(Object.values(ProductCategoryEnum));
