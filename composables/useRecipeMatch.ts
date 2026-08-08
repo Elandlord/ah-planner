@@ -13,6 +13,10 @@ interface RecipeScoreInterface {
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 export function filterFreshItems(
     items: DatedReceiptItemInterface[],
     now: Date,
@@ -33,8 +37,9 @@ export function scoreRecipe(
     let score = 0;
 
     for (const ingredient of recipe.ingredients) {
-        const normalizedIngredient = ingredient.name.toLowerCase();
-        const nameMatch = [...purchasedNames].some((name) => name.includes(normalizedIngredient));
+        const normalizedIngredient = normalizeProductName(ingredient.name);
+        const ingredientPattern = new RegExp(`\\b${escapeRegExp(normalizedIngredient)}`);
+        const nameMatch = [...purchasedNames].some((name) => ingredientPattern.test(name));
         const categoryMatch = purchasedCategories.has(ingredient.category);
 
         if (nameMatch) {
