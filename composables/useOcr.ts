@@ -4,6 +4,8 @@ import { extractTextFromPdf } from '~/composables/usePdfParser';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import type CategoryOverridesInterface from '~/types/CategoryOverridesInterface';
 
+const OCR_TIMEOUT_MS = 30000;
+
 export function useOcr(getOverrides: () => CategoryOverridesInterface = () => ({})) {
     const isProcessing = ref(false);
     const progress = ref('');
@@ -21,7 +23,28 @@ export function useOcr(getOverrides: () => CategoryOverridesInterface = () => ({
             const worker = await createWorker('nld');
 
             progress.value = 'Tekst herkennen...';
-            const { data } = await worker.recognize(imageData);
+
+            let timeoutId: ReturnType<typeof setTimeout>;
+            const timeoutPromise = new Promise<never>((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    reject(new Error('OCR verwerking duurde te lang'));
+                }, OCR_TIMEOUT_MS);
+            });
+
+            let data;
+            try {
+                ({ data } = await Promise.race([worker.recognize(imageData), timeoutPromise]));
+            } catch (raceErr) {
+                try {
+                    await worker.terminate();
+                } catch {
+                    // best-effort cleanup of a stuck worker
+                }
+                throw raceErr;
+            } finally {
+                clearTimeout(timeoutId!);
+            }
+
             await worker.terminate();
 
             rawText.value = data.text;
