@@ -10,13 +10,15 @@ const navItems = [
 
 <template>
     <div class="app-wrapper">
+        <AppToasts />
         <header class="app-header">
             <div class="header-content">
                 <NuxtLink
                     to="/"
                     class="logo"
+                    aria-label="AH Planner"
                 >
-                    AH Planner
+                    <AhLogo :size="34" />
                 </NuxtLink>
                 <nav class="nav-links">
                     <NuxtLink
