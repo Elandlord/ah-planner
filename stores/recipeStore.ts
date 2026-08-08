@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia';
 import type RecipeInterface from '~/types/RecipeInterface';
+import type WeekPlanInterface from '~/types/WeekPlanInterface';
 import { rankRecipes } from '~/composables/useRecipeMatch';
 import { useReceiptStore } from '~/stores/receiptStore';
 import { recipes } from '~/data/recipes';
 
 const USER_RECIPE_ID_PREFIX = 'user-';
+const WEEK_PLAN_KEY = 'ah-planner-week-plan';
 
 function parseStored<T>(key: string, fallback: T): T {
     const stored = localStorage.getItem(key);
@@ -16,6 +18,42 @@ function parseStored<T>(key: string, fallback: T): T {
     } catch {
         return fallback;
     }
+}
+
+function getWeekStart(date: Date): string {
+    const start = new Date(date);
+    const day = start.getDay();
+    const diffToMonday = day === 0 ? -6 : 1 - day;
+    start.setDate(start.getDate() + diffToMonday);
+    start.setHours(0, 0, 0, 0);
+    return start.toISOString().slice(0, 10);
+}
+
+function parseWeekPlans(key: string): Record<string, WeekPlanInterface> {
+    const stored = localStorage.getItem(key);
+    if (!stored) {
+        return {};
+    }
+
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(stored);
+    } catch {
+        return {};
+    }
+
+    if (typeof parsed !== 'object' || parsed === null) {
+        return {};
+    }
+
+    const obj = parsed as Record<string, unknown>;
+    const values = Object.values(obj);
+    const isLegacyFlatPlan = values.length > 0 && values.every((v) => typeof v === 'string');
+    if (isLegacyFlatPlan) {
+        return { [getWeekStart(new Date())]: obj as WeekPlanInterface };
+    }
+
+    return obj as Record<string, WeekPlanInterface>;
 }
 
 function nextUserRecipeId(existingRecipes: RecipeInterface[]): string {
@@ -32,7 +70,8 @@ export const useRecipeStore = defineStore('recipe', {
         allRecipes: recipes as RecipeInterface[],
         userRecipes: parseStored<RecipeInterface[]>('ah-planner-user-recipes', []),
         savedRecipeIds: parseStored<string[]>('ah-planner-saved-recipes', []),
-        weekPlan: parseStored<Record<string, string>>('ah-planner-week-plan', {}),
+        weekPlans: parseWeekPlans(WEEK_PLAN_KEY),
+        currentWeekStart: getWeekStart(new Date()),
     }),
 
     getters: {
@@ -50,6 +89,10 @@ export const useRecipeStore = defineStore('recipe', {
             return rankRecipes(this.availableRecipes, receiptStore.itemsWithPurchaseDate).map(
                 (s) => s.recipe,
             );
+        },
+
+        weekPlan(state): WeekPlanInterface {
+            return state.weekPlans[state.currentWeekStart] ?? {};
         },
 
         weekPlanRecipes(): Record<string, RecipeInterface | undefined> {
@@ -89,10 +132,18 @@ export const useRecipeStore = defineStore('recipe', {
             if (this.savedRecipeIds.includes(recipeId)) {
                 this.toggleSaveRecipe(recipeId);
             }
-            for (const [day, plannedId] of Object.entries(this.weekPlan)) {
-                if (plannedId === recipeId) {
-                    this.removeFromDay(day);
+
+            let removedAny = false;
+            for (const plan of Object.values(this.weekPlans)) {
+                for (const [day, plannedId] of Object.entries(plan)) {
+                    if (plannedId === recipeId) {
+                        delete plan[day];
+                        removedAny = true;
+                    }
                 }
+            }
+            if (removedAny) {
+                this.persistWeekPlans();
             }
         },
 
@@ -117,50 +168,53 @@ export const useRecipeStore = defineStore('recipe', {
         },
 
         assignToDay(day: string, recipeId: string): void {
-            this.weekPlan[day] = recipeId;
-            localStorage.setItem(
-                'ah-planner-week-plan',
-                JSON.stringify(this.weekPlan),
-            );
+            if (!this.weekPlans[this.currentWeekStart]) {
+                this.weekPlans[this.currentWeekStart] = {};
+            }
+            this.weekPlans[this.currentWeekStart][day] = recipeId;
+            this.persistWeekPlans();
         },
 
         removeFromDay(day: string): void {
-            delete this.weekPlan[day];
-            localStorage.setItem(
-                'ah-planner-week-plan',
-                JSON.stringify(this.weekPlan),
-            );
+            const plan = this.weekPlans[this.currentWeekStart];
+            if (plan) {
+                delete plan[day];
+            }
+            this.persistWeekPlans();
+        },
+
+        persistWeekPlans(): void {
+            localStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(this.weekPlans));
         },
 
         exportData(): {
             savedRecipeIds: string[];
-            weekPlan: Record<string, string>;
+            weekPlans: Record<string, WeekPlanInterface>;
             userRecipes: RecipeInterface[];
         } {
             return {
                 savedRecipeIds: this.savedRecipeIds,
-                weekPlan: this.weekPlan,
+                weekPlans: this.weekPlans,
                 userRecipes: this.userRecipes,
             };
         },
 
         importData(data: {
             savedRecipeIds: string[];
-            weekPlan: Record<string, string>;
+            weekPlans: Record<string, WeekPlanInterface>;
             userRecipes: RecipeInterface[];
         }): void {
             this.savedRecipeIds = data.savedRecipeIds;
-            this.weekPlan = data.weekPlan;
+            this.weekPlans = data.weekPlans;
             this.userRecipes = data.userRecipes;
             localStorage.setItem(
                 'ah-planner-saved-recipes',
                 JSON.stringify(this.savedRecipeIds),
             );
-            localStorage.setItem(
-                'ah-planner-week-plan',
-                JSON.stringify(this.weekPlan),
-            );
+            this.persistWeekPlans();
             this.persistUserRecipes();
         },
     },
 });
+
+export { getWeekStart };

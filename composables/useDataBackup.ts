@@ -3,13 +3,12 @@ import type ReceiptInterface from '~/types/ReceiptInterface';
 import type RecipeInterface from '~/types/RecipeInterface';
 import { useCategoryOverrideStore } from '~/stores/categoryOverrideStore';
 import { useReceiptStore } from '~/stores/receiptStore';
-import { useRecipeStore } from '~/stores/recipeStore';
+import { getWeekStart, useRecipeStore } from '~/stores/recipeStore';
 import { useShoppingListStore } from '~/stores/shoppingListStore';
 import { downloadFile } from '~/composables/useReceiptExport';
 
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 
-export function isValidBackup(value: unknown): value is BackupInterface {
 function isValidReceipt(value: unknown): value is ReceiptInterface {
     if (typeof value !== 'object' || value === null) {
         return false;
@@ -31,19 +30,24 @@ function isValidBackup(value: unknown): value is BackupInterface {
         return false;
     }
     const backup = value as Record<string, unknown>;
-    return (
-        backup.version === BACKUP_VERSION &&
-        Array.isArray(backup.receipts) &&
-        backup.receipts.every(isValidReceipt) &&
-        Array.isArray(backup.savedRecipeIds) &&
-        typeof backup.weekPlan === 'object' &&
-        backup.weekPlan !== null &&
-        Array.isArray(backup.shoppingList) &&
-        Array.isArray(backup.userRecipes) &&
-        backup.userRecipes.every(isValidRecipe) &&
-        typeof backup.categoryOverrides === 'object' &&
-        backup.categoryOverrides !== null
-    );
+    if (
+        !Array.isArray(backup.receipts) ||
+        !backup.receipts.every(isValidReceipt) ||
+        !Array.isArray(backup.savedRecipeIds) ||
+        !Array.isArray(backup.shoppingList) ||
+        !Array.isArray(backup.userRecipes) ||
+        !backup.userRecipes.every(isValidRecipe) ||
+        typeof backup.categoryOverrides !== 'object' ||
+        backup.categoryOverrides === null
+    ) {
+        return false;
+    }
+
+    if (backup.version === 1) {
+        return typeof backup.weekPlan === 'object' && backup.weekPlan !== null;
+    }
+
+    return backup.version === 2 && typeof backup.weekPlans === 'object' && backup.weekPlans !== null;
 }
 
 export function createBackup(): BackupInterface {
@@ -51,14 +55,14 @@ export function createBackup(): BackupInterface {
     const recipeStore = useRecipeStore();
     const shoppingListStore = useShoppingListStore();
     const categoryOverrideStore = useCategoryOverrideStore();
-    const { savedRecipeIds, weekPlan, userRecipes } = recipeStore.exportData();
+    const { savedRecipeIds, weekPlans, userRecipes } = recipeStore.exportData();
 
     return {
         version: BACKUP_VERSION,
         exportedAt: new Date().toISOString(),
         receipts: receiptStore.exportData(),
         savedRecipeIds,
-        weekPlan,
+        weekPlans,
         shoppingList: shoppingListStore.exportData(),
         userRecipes,
         categoryOverrides: categoryOverrideStore.overrides,
@@ -71,10 +75,13 @@ function restoreBackup(backup: BackupInterface): void {
     const shoppingListStore = useShoppingListStore();
     const categoryOverrideStore = useCategoryOverrideStore();
 
+    const weekPlans =
+        backup.version === 1 ? { [getWeekStart(new Date())]: backup.weekPlan } : backup.weekPlans;
+
     receiptStore.importData(backup.receipts);
     recipeStore.importData({
         savedRecipeIds: backup.savedRecipeIds,
-        weekPlan: backup.weekPlan,
+        weekPlans,
         userRecipes: backup.userRecipes,
     });
     shoppingListStore.importData(backup.shoppingList);
