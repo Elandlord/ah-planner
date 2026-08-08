@@ -1,8 +1,9 @@
 import { ahFetch, getAnonymousAccessToken, getStoredTokens, getValidAccessToken } from '~~/server/utils/ahApi';
+import { pickBestProduct } from '~~/server/utils/ahProductMatch';
 import type AhProductInterface from '~/types/AhProductInterface';
 
 const MAX_CANDIDATES = 60;
-const CACHE_KEY = 'products.json';
+const CACHE_KEY = 'products.v2.json';
 
 interface SearchProduct {
     webshopId?: number;
@@ -88,11 +89,11 @@ export default defineEventHandler(async (event) => {
                 `/mobile-services/product/search/v2?query=${encodeURIComponent(name)}&sortOn=RELEVANCE`,
                 accessToken,
             );
-            const first = response.products?.length ? response.products[0] : null;
+            const best = pickBestProduct(name, response.products ?? []);
             resolved = {
                 query: name,
-                product: first ? mapProduct(first) : null,
-                bonusMechanism: first?.bonusMechanism ?? null,
+                product: best ? mapProduct(best) : null,
+                bonusMechanism: best?.bonusMechanism ?? null,
             };
         } catch {
             resolved = { query: name, product: null, bonusMechanism: null };
