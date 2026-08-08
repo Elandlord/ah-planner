@@ -17,6 +17,32 @@ describe('matchScore', () => {
     });
 });
 
+describe('organic products', () => {
+    it('takes the cheaper plain product over the organic one', () => {
+        const best = pickBestProduct('AH Feta', [
+            { title: 'AH Biologisch Griekse feta', currentPrice: 2.59 },
+            { title: 'AH Griekse feta', currentPrice: 1.99 },
+        ]);
+        expect(best?.title).toBe('AH Griekse feta');
+    });
+
+    it('keeps organic when it is the only thing that fits', () => {
+        const best = pickBestProduct('AH Balsamico azijn', [
+            { title: 'AH Biologisch Balsamico azijn', currentPrice: 2.99 },
+            { title: 'AH Bananen', currentPrice: 1.49 },
+        ]);
+        expect(best?.title).toBe('AH Biologisch Balsamico azijn');
+    });
+
+    it('does not fall for a loosely related cheaper product', () => {
+        const best = pickBestProduct('AH Feta', [
+            { title: 'AH Biologisch Griekse feta', currentPrice: 2.59 },
+            { title: 'AH Pittige feta dip saus', currentPrice: 1.29 },
+        ]);
+        expect(best?.title).toBe('AH Biologisch Griekse feta');
+    });
+});
+
 describe('pickBestProduct', () => {
     it('skips the shop ordering when the first hit is unrelated', () => {
         const best = pickBestProduct('AH Gele uien', [

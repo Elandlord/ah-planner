@@ -2,12 +2,14 @@
 import { useRecipeStore } from '~/stores/recipeStore';
 import { filterRecipes, recipeCategories } from '~/composables/useRecipeFilters';
 import { buildWeekPlan, pickRandom, recipesNeeded } from '~/composables/useWeekPlan';
+import { sortByBonus, useRecipeBonus } from '~/composables/useRecipeBonus';
 import { useToast } from '~/composables/useToast';
 
 const DAYS = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
 
 const recipeStore = useRecipeStore();
 const toast = useToast();
+const { bonusByRecipe, loadBonusData } = useRecipeBonus();
 
 type RecipeTab = 'suggested' | 'all' | 'saved' | 'weekplan';
 
@@ -24,8 +26,11 @@ const search = ref('');
 const openRecipeId = ref<string | null>(null);
 const draggedDay = ref<string | null>(null);
 
-const suggested = computed(() =>
-    filterRecipes(recipeStore.suggestedRecipes, category.value, search.value));
+/** A recipe whose ingredients are in the bonus this week is worth cooking first. */
+const suggested = computed(() => sortByBonus(
+    filterRecipes(recipeStore.suggestedRecipes, category.value, search.value),
+    bonusByRecipe.value,
+));
 const all = computed(() => filterRecipes(recipeStore.allRecipes, category.value, search.value));
 const saved = computed(() => filterRecipes(recipeStore.savedRecipes, category.value, search.value));
 
@@ -48,10 +53,13 @@ function openRecipe(recipeId: string): void {
 const runLength = ref(2);
 
 function randomiseWeek(): void {
-    const pool = recipeStore.savedRecipes.length >= recipesNeeded(DAYS.length, runLength.value)
+    const needed = recipesNeeded(DAYS.length, runLength.value);
+    const base = recipeStore.savedRecipes.length >= needed
         ? recipeStore.savedRecipes
         : recipeStore.allRecipes;
-    const picked = pickRandom(pool, recipesNeeded(DAYS.length, runLength.value), Math.random);
+    const withBonus = base.filter((candidate) => (bonusByRecipe.value.get(candidate.id) ?? 0) > 0);
+    const pool = withBonus.length >= needed ? withBonus : base;
+    const picked = pickRandom(pool, needed, Math.random);
     if (picked.length === 0) {
         toast.error('Geen recepten om uit te kiezen.');
         return;
@@ -59,6 +67,8 @@ function randomiseWeek(): void {
     recipeStore.replaceWeekPlan(buildWeekPlan(DAYS, picked, runLength.value));
     toast.success(`Week gevuld met ${picked.length} recepten.`);
 }
+
+onMounted(() => loadBonusData(recipeStore.allRecipes));
 
 function startDrag(day: string): void {
     draggedDay.value = day;

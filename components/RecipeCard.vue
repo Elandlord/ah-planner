@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type RecipeInterface from '~/types/RecipeInterface';
+import { useRecipeBonus } from '~/composables/useRecipeBonus';
 
 const { recipe, isSaved, days, startOpen = false } = defineProps<{
     recipe: RecipeInterface;
@@ -13,6 +14,9 @@ const emit = defineEmits<{
     plan: [days: string[]];
 }>();
 
+const { bonusCountFor } = useRecipeBonus();
+
+const bonusCount = computed(() => bonusCountFor(recipe.id));
 const isExpanded = ref(startOpen);
 const planDays = ref<string[]>([]);
 
@@ -59,6 +63,10 @@ watch(() => startOpen, (open) => {
         </div>
 
         <div class="recipe-meta">
+            <span
+                v-if="bonusCount > 0"
+                class="bonus-pill"
+            >{{ bonusCount }} in de bonus</span>
             <span>{{ recipe.servings }} personen</span>
             <span>{{ recipe.prepTimeMinutes }} min</span>
             <span
@@ -166,6 +174,10 @@ watch(() => startOpen, (open) => {
 
 .recipe-meta {
     @apply flex flex-wrap gap-2 mt-2 text-xs text-gray-500;
+}
+
+.bonus-pill {
+    @apply px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-700;
 }
 
 .recipe-tag {

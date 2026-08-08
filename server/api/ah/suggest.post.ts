@@ -3,7 +3,7 @@ import { pickBestProduct } from '~~/server/utils/ahProductMatch';
 import type AhProductInterface from '~/types/AhProductInterface';
 
 const MAX_CANDIDATES = 60;
-const CACHE_KEY = 'products.v2.json';
+const CACHE_KEY = 'products.v5.json';
 
 interface SearchProduct {
     webshopId?: number;
