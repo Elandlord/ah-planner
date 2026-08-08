@@ -86,7 +86,9 @@ export const useRecipeStore = defineStore('recipe', {
 
         suggestedRecipes(): RecipeInterface[] {
             const receiptStore = useReceiptStore();
-            return rankRecipes(this.availableRecipes, receiptStore.allItems).map((s) => s.recipe);
+            return rankRecipes(this.availableRecipes, receiptStore.itemsWithPurchaseDate).map(
+                (s) => s.recipe,
+            );
         },
 
         weekPlan(state): WeekPlanInterface {
@@ -185,24 +187,32 @@ export const useRecipeStore = defineStore('recipe', {
             localStorage.setItem(WEEK_PLAN_KEY, JSON.stringify(this.weekPlans));
         },
 
-        exportData(): { savedRecipeIds: string[]; weekPlans: Record<string, WeekPlanInterface> } {
+        exportData(): {
+            savedRecipeIds: string[];
+            weekPlans: Record<string, WeekPlanInterface>;
+            userRecipes: RecipeInterface[];
+        } {
             return {
                 savedRecipeIds: this.savedRecipeIds,
                 weekPlans: this.weekPlans,
+                userRecipes: this.userRecipes,
             };
         },
 
         importData(data: {
             savedRecipeIds: string[];
             weekPlans: Record<string, WeekPlanInterface>;
+            userRecipes: RecipeInterface[];
         }): void {
             this.savedRecipeIds = data.savedRecipeIds;
             this.weekPlans = data.weekPlans;
+            this.userRecipes = data.userRecipes;
             localStorage.setItem(
                 'ah-planner-saved-recipes',
                 JSON.stringify(this.savedRecipeIds),
             );
             this.persistWeekPlans();
+            this.persistUserRecipes();
         },
     },
 });

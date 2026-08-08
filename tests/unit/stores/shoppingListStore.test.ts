@@ -100,10 +100,13 @@ describe('shoppingListStore', () => {
     beforeEach(() => {
         vi.stubGlobal('localStorage', createLocalStorageStub());
         setActivePinia(createPinia());
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-01-12T12:00:00Z'));
     });
 
     afterEach(() => {
         vi.unstubAllGlobals();
+        vi.useRealTimers();
     });
 
     describe('addItem', () => {
@@ -394,6 +397,7 @@ describe('shoppingListStore', () => {
                     checked: false,
                     frequency: 1,
                     sources: [{ day: 'monday', recipeName: 'Pannenkoeken' }],
+                    amounts: ['100ml'],
                 },
             ]);
         });
@@ -402,6 +406,22 @@ describe('shoppingListStore', () => {
             // #given
             const store = useShoppingListStore();
             seedPurchasedItems([makeItem({ name: 'melk' })]);
+            seedWeekPlan(
+                { monday: 'recipe-1' },
+                [makeRecipe({ id: 'recipe-1', ingredients: [makeIngredient({ name: 'melk' })] })],
+            );
+
+            // #when
+            store.generateFromWeekPlan();
+
+            // #then
+            expect(store.items).toEqual([]);
+        });
+
+        it('matches purchased items with a size suffix by normalized name', () => {
+            // #given
+            const store = useShoppingListStore();
+            seedPurchasedItems([makeItem({ name: 'Melk 1L' })]);
             seedWeekPlan(
                 { monday: 'recipe-1' },
                 [makeRecipe({ id: 'recipe-1', ingredients: [makeIngredient({ name: 'melk' })] })],
@@ -446,6 +466,7 @@ describe('shoppingListStore', () => {
                         { day: 'monday', recipeName: 'Pannenkoeken' },
                         { day: 'tuesday', recipeName: 'Pannenkoeken' },
                     ],
+                    amounts: ['100ml', '100ml'],
                 },
             ]);
         });

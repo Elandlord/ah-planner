@@ -77,10 +77,13 @@ describe('recipeStore', () => {
     beforeEach(() => {
         vi.stubGlobal('localStorage', createLocalStorageStub());
         setActivePinia(createPinia());
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date('2026-01-12T12:00:00Z'));
     });
 
     afterEach(() => {
         vi.unstubAllGlobals();
+        vi.useRealTimers();
     });
 
     describe('state', () => {
@@ -356,11 +359,12 @@ describe('recipeStore', () => {
     });
 
     describe('exportData', () => {
-        it('returns the saved recipe ids and the week plans', () => {
+        it('returns the saved recipe ids, the week plans and the user recipes', () => {
             // #given
             const store = useRecipeStore();
             store.savedRecipeIds = ['recipe-1'];
             store.weekPlans[store.currentWeekStart] = { woensdag: 'recipe-1' };
+            store.userRecipes = [makeRecipe({ id: 'user-1' })];
 
             // #when
             const exported = store.exportData();
@@ -369,26 +373,30 @@ describe('recipeStore', () => {
             expect(exported).toEqual({
                 savedRecipeIds: ['recipe-1'],
                 weekPlans: { [store.currentWeekStart]: { woensdag: 'recipe-1' } },
+                userRecipes: [makeRecipe({ id: 'user-1' })],
             });
         });
     });
 
     describe('importData', () => {
-        it('replaces the saved recipe ids and the week plans', () => {
+        it('replaces the saved recipe ids, the week plans and the user recipes', () => {
             // #given
             const store = useRecipeStore();
             store.savedRecipeIds = ['recipe-1'];
             store.weekPlans[store.currentWeekStart] = { woensdag: 'recipe-1' };
+            store.userRecipes = [makeRecipe({ id: 'user-1' })];
 
             // #when
             store.importData({
                 savedRecipeIds: ['recipe-2'],
                 weekPlans: { '2026-01-05': { dinsdag: 'recipe-2' } },
+                userRecipes: [makeRecipe({ id: 'user-2' })],
             });
 
             // #then
             expect(store.savedRecipeIds).toEqual(['recipe-2']);
             expect(store.weekPlans).toEqual({ '2026-01-05': { dinsdag: 'recipe-2' } });
+            expect(store.userRecipes).toEqual([makeRecipe({ id: 'user-2' })]);
         });
 
         it('persists the imported data to storage', () => {
@@ -399,12 +407,16 @@ describe('recipeStore', () => {
             store.importData({
                 savedRecipeIds: ['recipe-2'],
                 weekPlans: { '2026-01-05': { dinsdag: 'recipe-2' } },
+                userRecipes: [makeRecipe({ id: 'user-2' })],
             });
 
             // #then
             expect(localStorage.getItem(SAVED_RECIPES_KEY)).toBe(JSON.stringify(['recipe-2']));
             expect(localStorage.getItem(WEEK_PLAN_KEY)).toBe(
                 JSON.stringify({ '2026-01-05': { dinsdag: 'recipe-2' } }),
+            );
+            expect(localStorage.getItem(USER_RECIPES_KEY)).toBe(
+                JSON.stringify([makeRecipe({ id: 'user-2' })]),
             );
         });
     });

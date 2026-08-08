@@ -4,7 +4,8 @@ import type ShoppingListItemSourceInterface from '~/types/ShoppingListItemSource
 import { useReceiptStore } from '~/stores/receiptStore';
 import { useRecipeStore } from '~/stores/recipeStore';
 import { topEntries } from '~/composables/useItemFrequency';
-import { scoreRecipe } from '~/composables/useRecipeMatch';
+import { filterFreshItems, scoreRecipe } from '~/composables/useRecipeMatch';
+import { normalizeProductName } from '~/composables/useReceiptParser';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 const STORAGE_KEY = 'ah-planner-shopping-list';
@@ -130,12 +131,18 @@ export const useShoppingListStore = defineStore('shoppingList', {
         generateFromWeekPlan(): void {
             const recipeStore = useRecipeStore();
             const receiptStore = useReceiptStore();
-            const purchasedNames = new Set(receiptStore.allItems.map((i) => i.name.toLowerCase()));
-            const purchasedCategories = new Set(receiptStore.allItems.map((i) => i.category));
+            const freshItems = filterFreshItems(receiptStore.itemsWithPurchaseDate, new Date());
+            const purchasedNames = new Set(freshItems.map((i) => normalizeProductName(i.name)));
+            const purchasedCategories = new Set(freshItems.map((i) => i.category));
 
             const missingByName = new Map<
                 string,
-                { category: ProductCategoryEnum; count: number; sources: ShoppingListItemSourceInterface[] }
+                {
+                    category: ProductCategoryEnum;
+                    count: number;
+                    sources: ShoppingListItemSourceInterface[];
+                    amounts: string[];
+                }
             >();
 
             for (const [day, recipe] of Object.entries(recipeStore.weekPlanRecipes)) {
@@ -157,13 +164,19 @@ export const useShoppingListStore = defineStore('shoppingList', {
                     if (existing) {
                         existing.count += 1;
                         existing.sources.push(source);
+                        existing.amounts.push(ingredient.amount);
                     } else {
-                        missingByName.set(name, { category: ingredient.category, count: 1, sources: [source] });
+                        missingByName.set(name, {
+                            category: ingredient.category,
+                            count: 1,
+                            sources: [source],
+                            amounts: [ingredient.amount],
+                        });
                     }
                 }
             }
 
-            for (const [name, { category, count, sources }] of missingByName) {
+            for (const [name, { category, count, sources, amounts }] of missingByName) {
                 const existingItem = this.items.find(
                     (i) => i.name.toLowerCase() === name,
                 );
@@ -177,6 +190,7 @@ export const useShoppingListStore = defineStore('shoppingList', {
                     checked: false,
                     frequency: count,
                     sources,
+                    amounts,
                 });
             }
             saveToStorage(this.items);

@@ -1,8 +1,19 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { nextTick } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import IndexPage from '~/pages/index.vue';
 import ReceiptDropZone from '~/components/ReceiptDropZone.vue';
+
+class FakeFileReader {
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    result: string | ArrayBuffer | null = null;
+
+    readAsDataURL(): void {
+        // resolved manually in tests by invoking onload/onerror
+    }
+}
 
 const RECEIPT_TEXT = ['Albert Heijn', 'MELK 1,29', 'BROOD 2,19', 'TOTAAL 3,48'].join('\n');
 
@@ -59,6 +70,41 @@ describe('pages/index.vue', () => {
 
             // #then
             expect(wrapper.find('.manual-textarea').exists()).toBe(false);
+        });
+    });
+
+    describe('upload errors', () => {
+        const OriginalFileReader = global.FileReader;
+        let readerInstance: FakeFileReader | undefined;
+
+        afterEach(() => {
+            global.FileReader = OriginalFileReader;
+        });
+
+        it('shows an error and advances the queue when a file fails to read', async () => {
+            // #given
+            global.FileReader = class extends FakeFileReader {
+                constructor() {
+                    super();
+                    readerInstance = this;
+                }
+            } as unknown as typeof FileReader;
+
+            const wrapper = mountPage();
+            const failingFile = new File(['a'], 'receipt1.jpg', { type: 'image/jpeg' });
+            const queuedFile = new File(['b'], 'receipt2.jpg', { type: 'image/jpeg' });
+
+            // #when
+            await wrapper
+                .findComponent(ReceiptDropZone)
+                .vm.$emit('filesSelected', [failingFile, queuedFile]);
+            await nextTick();
+            readerInstance?.onerror?.();
+            await nextTick();
+
+            // #then
+            expect(wrapper.find('.error-message').text()).toBe('Kon bestand niet lezen.');
+            expect(wrapper.find('.queue-indicator').exists()).toBe(false);
         });
     });
 

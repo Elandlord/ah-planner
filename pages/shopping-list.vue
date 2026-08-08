@@ -117,7 +117,15 @@ function addItem(): void {
                         @change="shoppingListStore.toggleItem(item.name)"
                     >
                     <span class="item-text-group">
-                        <span class="item-text">{{ item.name }}</span>
+                        <span class="item-text">
+                            {{ item.name }}
+                            <span
+                                v-if="item.amounts && item.amounts.length > 0"
+                                class="item-amounts"
+                            >
+                                ({{ item.amounts.join(' + ') }})
+                            </span>
+                        </span>
                         <span
                             v-if="item.sources && item.sources.length > 0"
                             class="item-sources"
@@ -230,6 +238,10 @@ function addItem(): void {
 
 .item-sources {
     @apply text-xs text-gray-400;
+}
+
+.item-amounts {
+    @apply text-xs text-gray-400 font-normal;
 }
 
 .item-price {
