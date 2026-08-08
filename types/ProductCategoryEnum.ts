@@ -13,6 +13,8 @@ enum ProductCategoryEnum {
     snacks = 'snacks',
     diepvries = 'diepvries',
     huishouden = 'huishouden',
+    maaltijden = 'maaltijden',
+    vega = 'vega',
     overig = 'overig',
 }
 
