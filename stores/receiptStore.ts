@@ -47,7 +47,12 @@ export const useReceiptStore = defineStore('receipt', {
 
         itemsWithPurchaseDate: (state): DatedReceiptItemInterface[] =>
             state.receipts.flatMap((receipt) =>
-                receipt.items.map((item) => ({ ...item, purchaseDate: receipt.date })),
+                receipt.items.map((item, itemIndex) => ({
+                    ...item,
+                    purchaseDate: receipt.date,
+                    receiptId: receipt.id,
+                    itemIndex,
+                })),
             ),
 
         recentItems: (state): ReceiptItemInterface[] => {
@@ -133,6 +138,16 @@ export const useReceiptStore = defineStore('receipt', {
 
         importData(receipts: ReceiptInterface[]): void {
             this.receipts = receipts;
+            saveToStorage(this.receipts);
+        },
+
+        markItemUsed(receiptId: string, itemIndex: number): void {
+            const receipt = this.receipts.find((r) => r.id === receiptId);
+            const item = receipt?.items[itemIndex];
+            if (!item) {
+                return;
+            }
+            item.consumedAt = new Date().toISOString();
             saveToStorage(this.receipts);
         },
     },

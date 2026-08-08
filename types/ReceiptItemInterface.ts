@@ -5,6 +5,7 @@ interface ReceiptItemInterface {
     price: number;
     quantity: number;
     category: ProductCategoryEnum;
+    consumedAt?: string;
 }
 
 export type { ReceiptItemInterface as default };
