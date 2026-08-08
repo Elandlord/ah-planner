@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useReceiptStore } from '~/stores/receiptStore';
 import { useReceiptExport } from '~/composables/useReceiptExport';
+import { groupByMonth } from '~/composables/useReceiptGrouping';
 
 const receiptStore = useReceiptStore();
 const { filterByWeek, filterByMonth, toCsv, toJson, downloadFile } = useReceiptExport();
@@ -20,6 +21,8 @@ const filteredReceipts = computed(() => {
     }
     return receipts;
 });
+
+const monthGroups = computed(() => groupByMonth(filteredReceipts.value));
 
 const exportReceipts = computed(() => {
     if (selectedIds.value.size === 0) {
@@ -87,6 +90,8 @@ watch(activeFilter, () => {
         <h1 class="page-title">
             Bonnen Overzicht
         </h1>
+
+        <AhConnectPanel />
 
         <div
             v-if="receiptStore.receipts.length > 0"
@@ -166,56 +171,71 @@ watch(activeFilter, () => {
             Geen bonnen gevonden voor deze periode.
         </p>
 
-        <div class="receipt-list">
-            <div
-                v-for="receipt in filteredReceipts"
-                :key="receipt.id"
-                class="receipt-card"
-            >
-                <div
-                    class="receipt-summary"
-                    @click="toggleExpand(receipt.id)"
-                >
-                    <div class="receipt-left">
-                        <input
-                            type="checkbox"
-                            :checked="selectedIds.has(receipt.id)"
-                            @click.stop="toggleSelect(receipt.id)"
-                        >
-                        <div>
-                            <p class="receipt-store">
-                                {{ receipt.storeName }}
-                            </p>
-                            <p class="receipt-date">
-                                {{ formatDate(receipt.date) }}
-                            </p>
-                        </div>
-                    </div>
-                    <div class="receipt-info">
-                        <span class="receipt-total">&euro;{{ receipt.total.toFixed(2) }}</span>
-                        <span class="receipt-item-count">{{ receipt.items.length }} items</span>
-                    </div>
-                </div>
+        <div
+            v-for="group in monthGroups"
+            :key="group.key"
+            class="month-group"
+        >
+            <div class="month-header">
+                <h2 class="month-label">
+                    {{ group.label }}
+                </h2>
+                <span class="month-meta">
+                    {{ group.receipts.length }} bonnen &middot; &euro;{{ group.total.toFixed(2) }}
+                </span>
+            </div>
 
+            <div class="receipt-list">
                 <div
-                    v-show="expandedId === receipt.id"
-                    class="receipt-items"
+                    v-for="receipt in group.receipts"
+                    :key="receipt.id"
+                    class="receipt-card"
                 >
                     <div
-                        v-for="item in receipt.items"
-                        :key="item.name"
-                        class="receipt-item"
+                        class="receipt-summary"
+                        @click="toggleExpand(receipt.id)"
                     >
-                        <span class="item-name">{{ item.name }}</span>
-                        <span class="item-qty">{{ item.quantity }}x</span>
-                        <span class="item-price">&euro;{{ item.price.toFixed(2) }}</span>
+                        <div class="receipt-left">
+                            <input
+                                type="checkbox"
+                                :checked="selectedIds.has(receipt.id)"
+                                @click.stop="toggleSelect(receipt.id)"
+                            >
+                            <div>
+                                <p class="receipt-store">
+                                    {{ receipt.storeName }}
+                                </p>
+                                <p class="receipt-date">
+                                    {{ formatDate(receipt.date) }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="receipt-info">
+                            <span class="receipt-total">&euro;{{ receipt.total.toFixed(2) }}</span>
+                            <span class="receipt-item-count">{{ receipt.items.length }} items</span>
+                        </div>
                     </div>
-                    <button
-                        class="delete-btn"
-                        @click="receiptStore.removeReceipt(receipt.id)"
+
+                    <div
+                        v-show="expandedId === receipt.id"
+                        class="receipt-items"
                     >
-                        Bon verwijderen
-                    </button>
+                        <div
+                            v-for="item in receipt.items"
+                            :key="item.name"
+                            class="receipt-item"
+                        >
+                            <span class="item-name">{{ item.name }}</span>
+                            <span class="item-qty">{{ item.quantity }}x</span>
+                            <span class="item-price">&euro;{{ item.price.toFixed(2) }}</span>
+                        </div>
+                        <button
+                            class="delete-btn"
+                            @click="receiptStore.removeReceipt(receipt.id)"
+                        >
+                            Bon verwijderen
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -269,6 +289,22 @@ watch(activeFilter, () => {
 
 .export-option {
     @apply block w-full px-4 py-2 text-sm text-left hover:bg-gray-50;
+}
+
+.month-group {
+    @apply mb-6;
+}
+
+.month-header {
+    @apply flex items-baseline justify-between px-1 pb-2 border-b mb-3;
+}
+
+.month-label {
+    @apply text-lg font-semibold text-gray-800;
+}
+
+.month-meta {
+    @apply text-sm text-gray-500;
 }
 
 .receipt-list {
