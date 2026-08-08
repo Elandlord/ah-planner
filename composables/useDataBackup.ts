@@ -9,6 +9,7 @@ import { downloadFile } from '~/composables/useReceiptExport';
 
 const BACKUP_VERSION = 1;
 
+export function isValidBackup(value: unknown): value is BackupInterface {
 function isValidReceipt(value: unknown): value is ReceiptInterface {
     if (typeof value !== 'object' || value === null) {
         return false;
@@ -45,7 +46,7 @@ function isValidBackup(value: unknown): value is BackupInterface {
     );
 }
 
-function createBackup(): BackupInterface {
+export function createBackup(): BackupInterface {
     const receiptStore = useReceiptStore();
     const recipeStore = useRecipeStore();
     const shoppingListStore = useShoppingListStore();
