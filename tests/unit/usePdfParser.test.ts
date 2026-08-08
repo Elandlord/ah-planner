@@ -15,11 +15,9 @@ describe('extractTextFromPdf', () => {
     beforeEach(() => {
         getTextContentMock.mockResolvedValue({
             items: [
-                { str: 'Albert Heijn' },
-                { str: '\n' },
-                { str: 'AH Halfvolle melk   1.29' },
-                { str: '\n' },
-                { str: 'SUBTOTAAL   1.29' },
+                { str: 'Albert Heijn', transform: [1, 0, 0, 1, 10, 700] },
+                { str: 'AH Halfvolle melk   1.29', transform: [1, 0, 0, 1, 10, 680] },
+                { str: 'SUBTOTAAL   1.29', transform: [1, 0, 0, 1, 10, 660] },
             ],
         });
 
@@ -52,7 +50,7 @@ describe('extractTextFromPdf', () => {
     it('extracts text from a multi-page PDF', async () => {
         const secondPageTextContent = {
             items: [
-                { str: 'Page 2 content' },
+                { str: 'Page 2 content', transform: [1, 0, 0, 1, 10, 700] },
             ],
         };
 
@@ -84,9 +82,9 @@ describe('extractTextFromPdf', () => {
     it('filters out non-text items', async () => {
         getTextContentMock.mockResolvedValue({
             items: [
-                { str: 'Text item' },
+                { str: 'Text item', transform: [1, 0, 0, 1, 10, 700] },
                 { type: 'beginMarkedContent' },
-                { str: 'Another text' },
+                { str: 'Another text', transform: [1, 0, 0, 1, 10, 680] },
             ],
         });
 

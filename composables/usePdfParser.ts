@@ -2,12 +2,20 @@ import type { TextItem } from 'pdfjs-dist/types/src/display/api';
 
 const Y_TOLERANCE = 2;
 
-function reconstructLines(items: TextItem[]): string[] {
+/** A page also contains marked content without text or position, which pdf.js hands over as is. */
+function isTextItem(item: unknown): item is TextItem {
+    return typeof item === 'object'
+        && item !== null
+        && typeof (item as TextItem).str === 'string'
+        && Array.isArray((item as TextItem).transform);
+}
+
+function reconstructLines(items: unknown[]): string[] {
     const lines: string[] = [];
     let currentLine: string[] = [];
     let lastY: number | null = null;
 
-    for (const item of items) {
+    for (const item of items.filter(isTextItem)) {
         const y = Math.round(item.transform[5]);
 
         if (lastY !== null && Math.abs(y - lastY) > Y_TOLERANCE) {

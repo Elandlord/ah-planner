@@ -8,6 +8,13 @@ import {
     startOfWeek,
 } from '~/composables/useReceiptExport';
 import type ReceiptInterface from '~/types/ReceiptInterface';
+
+/** toISOString shifts a day in any timezone east of UTC, so compare on local parts. */
+function localDate(date: Date): string {
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${date.getFullYear()}-${month}-${day}`;
+}
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 function makeReceipt(overrides: Partial<ReceiptInterface> = {}): ReceiptInterface {
@@ -39,20 +46,20 @@ describe('startOfWeek', () => {
         const wed = new Date('2026-02-04');
         const monday = startOfWeek(wed);
         expect(monday.getDay()).toBe(1);
-        expect(monday.toISOString().split('T')[0]).toBe('2026-02-02');
+        expect(localDate(monday)).toBe('2026-02-02');
     });
 
     it('returns Monday for a Sunday', () => {
         const sun = new Date('2026-02-08');
         const monday = startOfWeek(sun);
         expect(monday.getDay()).toBe(1);
-        expect(monday.toISOString().split('T')[0]).toBe('2026-02-02');
+        expect(localDate(monday)).toBe('2026-02-02');
     });
 
     it('returns same day for a Monday', () => {
         const mon = new Date('2026-02-02');
         const monday = startOfWeek(mon);
-        expect(monday.toISOString().split('T')[0]).toBe('2026-02-02');
+        expect(localDate(monday)).toBe('2026-02-02');
     });
 });
 
@@ -60,7 +67,7 @@ describe('filterByWeek', () => {
     it('returns receipts within the current week', () => {
         const today = new Date();
         const receipts = [
-            makeReceipt({ id: 'r1', date: today.toISOString().split('T')[0] }),
+            makeReceipt({ id: 'r1', date: localDate(today) }),
             makeReceipt({ id: 'r2', date: '2025-01-01' }),
         ];
 
@@ -79,7 +86,7 @@ describe('filterByWeek', () => {
         const lastWeek = new Date();
         lastWeek.setDate(lastWeek.getDate() - 7);
         const receipts = [
-            makeReceipt({ id: 'r1', date: lastWeek.toISOString().split('T')[0] }),
+            makeReceipt({ id: 'r1', date: localDate(lastWeek) }),
         ];
 
         const result = filterByWeek(receipts, -1);
@@ -91,7 +98,7 @@ describe('filterByMonth', () => {
     it('returns receipts within the current month', () => {
         const today = new Date();
         const receipts = [
-            makeReceipt({ id: 'r1', date: today.toISOString().split('T')[0] }),
+            makeReceipt({ id: 'r1', date: localDate(today) }),
             makeReceipt({ id: 'r2', date: '2025-01-01' }),
         ];
 
@@ -110,7 +117,7 @@ describe('filterByMonth', () => {
         const lastMonth = new Date();
         lastMonth.setMonth(lastMonth.getMonth() - 1);
         const receipts = [
-            makeReceipt({ id: 'r1', date: lastMonth.toISOString().split('T')[0] }),
+            makeReceipt({ id: 'r1', date: localDate(lastMonth) }),
         ];
 
         const result = filterByMonth(receipts, -1);
