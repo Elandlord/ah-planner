@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { useShoppingListStore } from '~/stores/shoppingListStore';
+import { useReceiptParser } from '~/composables/useReceiptParser';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
+import type AhProductInterface from '~/types/AhProductInterface';
 
 const shoppingListStore = useShoppingListStore();
+const { categorizeProduct } = useReceiptParser();
 
 const newItemName = ref('');
 const newItemCategory = ref<ProductCategoryEnum>(ProductCategoryEnum.overig);
@@ -21,6 +24,16 @@ function addItem(): void {
     });
     newItemName.value = '';
 }
+
+function addProduct(product: AhProductInterface): void {
+    shoppingListStore.addItem({
+        name: product.title,
+        category: categorizeProduct(product.title),
+        checked: false,
+        frequency: 1,
+    });
+    newItemName.value = '';
+}
 </script>
 
 <template>
@@ -30,13 +43,11 @@ function addItem(): void {
         </h1>
 
         <div class="add-form">
-            <input
+            <AhProductSearchInput
                 v-model="newItemName"
-                type="text"
-                class="add-input"
-                placeholder="Product toevoegen..."
+                @select="addProduct"
                 @keyup.enter="addItem"
-            >
+            />
             <select
                 v-model="newItemCategory"
                 class="add-category"
