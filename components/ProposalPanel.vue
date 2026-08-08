@@ -2,15 +2,16 @@
 import { useSuggestions } from '~/composables/useSuggestions';
 import { useAhApi } from '~/composables/useAhApi';
 import type ProposalItemInterface from '~/types/ProposalItemInterface';
+import { useToast } from '~/composables/useToast';
 
 const { buildProposal } = useSuggestions();
+const toast = useToast();
 const { fetchStatus } = useAhApi();
 
 const items = ref<ProposalItemInterface[]>([]);
 const loading = ref(true);
 const submitting = ref(false);
 const connected = ref(false);
-const message = ref('');
 
 const selectedItems = computed(() =>
     items.value.filter((item) => item.selected && item.product !== null),
@@ -38,7 +39,7 @@ async function load(): Promise<void> {
         items.value = proposal;
         connected.value = status;
     } catch {
-        message.value = 'Voorstel laden mislukt.';
+        toast.error('Voorstel laden mislukt.');
     } finally {
         loading.value = false;
     }
@@ -56,7 +57,6 @@ function decrease(item: ProposalItemInterface): void {
 
 async function addToAhList(): Promise<void> {
     submitting.value = true;
-    message.value = '';
     try {
         const payload = selectedItems.value.map((item) => ({
             productId: item.product?.id ?? 0,
@@ -67,9 +67,9 @@ async function addToAhList(): Promise<void> {
             method: 'POST',
             body: { items: payload },
         });
-        message.value = `${response.added} producten op je AH lijst gezet. Check de Appie app.`;
+        toast.success(`${response.added} producten op je AH lijst gezet. Check de Appie app.`);
     } catch {
-        message.value = 'Toevoegen aan AH lijst mislukt. Controleer de koppeling op de Bonnen-pagina.';
+        toast.error('Toevoegen aan AH lijst mislukt. Controleer de koppeling op de Bonnen-pagina.');
     } finally {
         submitting.value = false;
     }
@@ -197,12 +197,6 @@ onMounted(load);
             </div>
         </template>
 
-        <p
-            v-if="message"
-            class="page-message"
-        >
-            {{ message }}
-        </p>
     </div>
 </template>
 

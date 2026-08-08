@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { useAhApi } from '~/composables/useAhApi';
+import { useToast } from '~/composables/useToast';
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 5 * 60 * 1000;
 
 const { fetchStatus, startLogin, syncReceipts } = useAhApi();
+const toast = useToast();
 
 const connected = ref<boolean | null>(null);
 const busy = ref(false);
-const message = ref('');
 const waitingForLogin = ref(false);
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -36,13 +37,13 @@ function pollUntilConnected(): void {
     pollTimer = setInterval(async () => {
         if (Date.now() > deadline) {
             stopPolling();
-            message.value = 'Inloggen duurde te lang. Probeer het opnieuw.';
+            toast.error('Inloggen duurde te lang. Probeer het opnieuw.');
             return;
         }
         if (await fetchStatus()) {
             stopPolling();
             connected.value = true;
-            message.value = 'Verbonden. Bonnen worden opgehaald...';
+            toast.success('Verbonden met Albert Heijn. Bonnen worden opgehaald.');
             await sync();
         }
     }, POLL_INTERVAL_MS);
@@ -50,15 +51,14 @@ function pollUntilConnected(): void {
 
 async function login(): Promise<void> {
     busy.value = true;
-    message.value = '';
     try {
         const loginUrl = await startLogin();
         window.open(loginUrl, '_blank');
         waitingForLogin.value = true;
-        message.value = 'Log in op het nieuwe tabblad. Deze pagina wacht op je.';
+        toast.info('Log in op het nieuwe tabblad. Deze pagina wacht op je.');
         pollUntilConnected();
     } catch {
-        message.value = 'Inloggen starten mislukt. Draait de dev server?';
+        toast.error('Inloggen starten mislukt. Draait de dev server?');
     } finally {
         busy.value = false;
     }
@@ -66,14 +66,15 @@ async function login(): Promise<void> {
 
 async function sync(): Promise<void> {
     busy.value = true;
-    message.value = '';
     try {
         const count = await syncReceipts();
-        message.value = count > 0
-            ? `${count} bonnen opgehaald of bijgewerkt.`
-            : 'Geen nieuwe bonnen gevonden.';
+        if (count > 0) {
+            toast.success(`${count} bonnen opgehaald of bijgewerkt.`);
+        } else {
+            toast.info('Geen nieuwe bonnen gevonden.');
+        }
     } catch {
-        message.value = 'Synchroniseren mislukt. Verbind opnieuw als dit blijft gebeuren.';
+        toast.error('Synchroniseren mislukt. Verbind opnieuw als dit blijft gebeuren.');
         connected.value = await fetchStatus();
     } finally {
         busy.value = false;
@@ -130,12 +131,6 @@ onUnmounted(stopPolling);
             </button>
         </div>
 
-        <p
-            v-if="message"
-            class="panel-message"
-        >
-            {{ message }}
-        </p>
     </div>
 </template>
 
