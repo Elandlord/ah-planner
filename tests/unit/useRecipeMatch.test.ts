@@ -98,6 +98,46 @@ describe('scoreRecipe', () => {
         expect(result.matchedIngredients).toContain('melk');
         expect(result.score).toBeGreaterThanOrEqual(3);
     });
+
+    it('does not match an ingredient as a substring of an unrelated purchased name', () => {
+        const recipe: RecipeInterface = {
+            ...MOCK_RECIPE,
+            ingredients: [{ name: 'ei', amount: '2 stuks', category: ProductCategoryEnum.zuivel }],
+        };
+        const purchasedNames = new Set([normalizeProductName('Reinigingsmiddel')]);
+        const purchasedCategories = new Set<ProductCategoryEnum>([]);
+
+        const result = scoreRecipe(recipe, purchasedNames, purchasedCategories);
+
+        expect(result.matchedIngredients).not.toContain('ei');
+        expect(result.missingIngredients).toContain('ei');
+    });
+
+    it('matches an ingredient against a plural purchased name', () => {
+        const recipe: RecipeInterface = {
+            ...MOCK_RECIPE,
+            ingredients: [{ name: 'ei', amount: '2 stuks', category: ProductCategoryEnum.zuivel }],
+        };
+        const purchasedNames = new Set([normalizeProductName('Eieren')]);
+        const purchasedCategories = new Set<ProductCategoryEnum>([]);
+
+        const result = scoreRecipe(recipe, purchasedNames, purchasedCategories);
+
+        expect(result.matchedIngredients).toContain('ei');
+    });
+
+    it('matches an ingredient against an exact purchased name', () => {
+        const recipe: RecipeInterface = {
+            ...MOCK_RECIPE,
+            ingredients: [{ name: 'ei', amount: '2 stuks', category: ProductCategoryEnum.zuivel }],
+        };
+        const purchasedNames = new Set([normalizeProductName('Ei')]);
+        const purchasedCategories = new Set<ProductCategoryEnum>([]);
+
+        const result = scoreRecipe(recipe, purchasedNames, purchasedCategories);
+
+        expect(result.matchedIngredients).toContain('ei');
+    });
 });
 
 describe('rankRecipes', () => {
