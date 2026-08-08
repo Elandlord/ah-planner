@@ -6,6 +6,14 @@ export default defineNuxtConfig({
         '@nuxtjs/tailwindcss',
     ],
     ssr: false,
+    nitro: {
+        storage: {
+            ah: {
+                driver: 'fs',
+                base: '.data/ah',
+            },
+        },
+    },
     app: {
         head: {
             title: 'AH Planner',
