@@ -28,6 +28,18 @@ export function linearTrend(values: number[]): TrendLine {
     return { slope, intercept: meanValue - slope * meanIndex };
 }
 
+/**
+ * Redeeming a koopzegel book drops one month's own spend by fifty euro and lifts none of
+ * the others, so a rolling mean says more about the real pace than any single month.
+ */
+export function rollingAverage(values: number[], window: number): number[] {
+    return values.map((unused, index) => {
+        const from = Math.max(0, index - window + 1);
+        const slice = values.slice(from, index + 1);
+        return slice.reduce((sum, value) => sum + value, 0) / slice.length;
+    });
+}
+
 export function trendValueAt(trend: TrendLine, index: number): number {
     return trend.intercept + trend.slope * index;
 }

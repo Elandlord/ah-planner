@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type MonthlySpendInterface from '~/types/MonthlySpendInterface';
-import { linearTrend, savingsMethods, trendValueAt } from '~/composables/useSpendingTrend';
+import { rollingAverage, savingsMethods } from '~/composables/useSpendingTrend';
 
 const { months } = defineProps<{ months: MonthlySpendInterface[] }>();
 
@@ -91,15 +91,16 @@ const averageOwnMoney = computed(() =>
         : months.reduce((sum, month) => sum + month.paidWithOwnMoney, 0) / months.length,
 );
 
+const ROLLING_WINDOW = 3;
+
 const trendPath = computed(() => {
     if (months.length < 2) {
         return '';
     }
-    const trend = linearTrend(months.map((month) => month.total));
-    const points = months.map((month, index) => {
+    const rolling = rollingAverage(months.map((month) => month.paidWithOwnMoney), ROLLING_WINDOW);
+    const points = rolling.map((value, index) => {
         const x = PADDING_LEFT + index * slotWidth.value + slotWidth.value / 2;
-        const value = Math.min(Math.max(trendValueAt(trend, index), 0), maxTotal.value);
-        return `${x.toFixed(1)},${scaleY(value).toFixed(1)}`;
+        return `${x.toFixed(1)},${scaleY(Math.min(value, maxTotal.value)).toFixed(1)}`;
     });
     return `M${points.join(' L')}`;
 });
@@ -162,7 +163,7 @@ const tooltipRows = computed(() => {
                     />{{ entry.label }}
                 </span>
                 <span class="legend-item"><i class="swatch swatch-average" />Gemiddeld</span>
-                <span class="legend-item"><i class="swatch swatch-trend" />Trend</span>
+                <span class="legend-item"><i class="swatch swatch-trend" />Eigen geld, 3-maands</span>
             </div>
         </div>
 

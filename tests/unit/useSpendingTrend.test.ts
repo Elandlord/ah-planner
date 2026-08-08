@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { linearTrend, monthlySpend, savingsMethods, trendValueAt } from '~/composables/useSpendingTrend';
+import { linearTrend, monthlySpend, rollingAverage, savingsMethods, trendValueAt } from '~/composables/useSpendingTrend';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import type ReceiptPaymentInterface from '~/types/ReceiptPaymentInterface';
@@ -96,5 +96,21 @@ describe('monthlySpend', () => {
             receipt('b', '2026-08-01T10:00:00.000Z', 20.63),
         ]);
         expect(months[0].receiptCount).toBe(2);
+    });
+});
+
+describe('rollingAverage', () => {
+    it('averages over the window once it is filled', () => {
+        expect(rollingAverage([300, 600, 300, 600], 3)).toEqual([300, 450, 400, 500]);
+    });
+
+    it('uses what it has for the first months', () => {
+        expect(rollingAverage([500, 100], 3)).toEqual([500, 300]);
+    });
+
+    it('flattens the dip of a month where a book was redeemed', () => {
+        const own = [500, 350, 500];
+        const smoothed = rollingAverage(own, 3);
+        expect(smoothed[2] - smoothed[1]).toBeLessThan(own[2] - own[1]);
     });
 });
