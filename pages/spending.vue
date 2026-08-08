@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { useReceiptStore } from '~/stores/receiptStore';
+import { breakdownPayments } from '~/composables/useReceiptPayments';
+import { monthlySpend } from '~/composables/useSpendingTrend';
 
 const receiptStore = useReceiptStore();
+
+const payments = computed(() => breakdownPayments(receiptStore.receipts));
+const months = computed(() => monthlySpend(receiptStore.receipts));
+const savingsEntries = computed(() => Object.entries(payments.value.savingsByMethod));
 
 const topItems = computed(() =>
     Object.entries(receiptStore.itemFrequency)
@@ -49,6 +55,49 @@ const topItems = computed(() =>
                         &euro;{{ receiptStore.averagePerReceipt.toFixed(2) }}
                     </p>
                 </div>
+                <div class="stat-card">
+                    <p class="stat-label">
+                        Zelf betaald
+                    </p>
+                    <p class="stat-value stat-value-own">
+                        &euro;{{ payments.paidWithOwnMoney.toFixed(2) }}
+                    </p>
+                    <p class="stat-note">
+                        &euro;{{ payments.paidWithSavings.toFixed(2) }} met zegels &amp; emballage
+                    </p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-label">
+                        Bonusvoordeel
+                    </p>
+                    <p class="stat-value stat-value-bonus">
+                        &euro;{{ payments.discountTotal.toFixed(2) }}
+                    </p>
+                    <p class="stat-note">
+                        korting op de kassabon
+                    </p>
+                </div>
+            </div>
+
+            <MonthlySpendChart :months="months" />
+
+            <div
+                v-if="savingsEntries.length > 0"
+                class="section"
+            >
+                <h2 class="section-title">
+                    Niet met eigen geld betaald
+                </h2>
+                <div class="top-items">
+                    <div
+                        v-for="[method, amount] in savingsEntries"
+                        :key="method"
+                        class="top-item"
+                    >
+                        <span class="top-item-name">{{ method }}</span>
+                        <span class="top-item-count">&euro;{{ amount.toFixed(2) }}</span>
+                    </div>
+                </div>
             </div>
 
             <div class="section">
@@ -90,7 +139,7 @@ const topItems = computed(() =>
 }
 
 .stats-grid {
-    @apply grid grid-cols-3 gap-4 mb-6;
+    @apply grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-6;
 }
 
 .stat-card {
@@ -99,6 +148,18 @@ const topItems = computed(() =>
 
 .stat-label {
     @apply text-sm text-gray-500;
+}
+
+.stat-value-own {
+    @apply text-emerald-600;
+}
+
+.stat-value-bonus {
+    @apply text-amber-600;
+}
+
+.stat-note {
+    @apply text-xs text-gray-400 mt-1;
 }
 
 .stat-value {
