@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { usePantry } from '~/composables/usePantry';
 
-const { pantryItems, itemsByCategory, expiringSoonItems } = usePantry();
+const { pantryItems, itemsByCategory, expiringSoonItems, markItemUsed } = usePantry();
 </script>
 
 <template>
@@ -25,7 +25,10 @@ const { pantryItems, itemsByCategory, expiringSoonItems } = usePantry();
                 {{ expiringSoonItems.length }} item(s) bijna over datum
             </div>
 
-            <PantryList :items-by-category="itemsByCategory" />
+            <PantryList
+                :items-by-category="itemsByCategory"
+                @used="markItemUsed"
+            />
         </template>
     </div>
 </template>

@@ -48,9 +48,14 @@ export function usePantry() {
     const itemsByCategory = computed(() => groupPantryItemsByCategory(pantryItems.value));
     const expiringSoonItems = computed(() => pantryItems.value.filter((item) => item.expiringSoon));
 
+    function markItemUsed(item: PantryItemInterface): void {
+        receiptStore.markItemUsed(item.receiptId, item.itemIndex);
+    }
+
     return {
         pantryItems,
         itemsByCategory,
         expiringSoonItems,
+        markItemUsed,
     };
 }

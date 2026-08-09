@@ -22,6 +22,9 @@ export function filterFreshItems(
     now: Date,
 ): DatedReceiptItemInterface[] {
     return items.filter((item) => {
+        if (item.consumedAt) {
+            return false;
+        }
         const ageInDays = (now.getTime() - new Date(item.purchaseDate).getTime()) / DAY_IN_MS;
         return ageInDays <= shelfLifeDaysFor(item.category);
     });
