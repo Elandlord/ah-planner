@@ -34,6 +34,7 @@ export interface StockFreshnessInputInterface {
     category: ProductCategoryEnum;
     quantity: number;
     purchaseDate: string;
+    expiresAt?: string;
 }
 
 export interface StockFreshnessItemInterface extends StockFreshnessInputInterface {
@@ -51,8 +52,10 @@ export function buildStockItems(
     now: Date = new Date(),
 ): StockFreshnessItemInterface[] {
     return items.map((item) => {
-        const ageInDays = (now.getTime() - new Date(item.purchaseDate).getTime()) / DAY_IN_MS;
-        const daysRemaining = shelfLifeDaysFor(item.category) - ageInDays;
+        const daysRemaining = item.expiresAt
+            ? (new Date(item.expiresAt).getTime() - now.getTime()) / DAY_IN_MS
+            : shelfLifeDaysFor(item.category)
+                - (now.getTime() - new Date(item.purchaseDate).getTime()) / DAY_IN_MS;
 
         return {
             ...item,

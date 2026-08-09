@@ -48,6 +48,9 @@ export const usePantryStore = defineStore('pantry', {
             if (existing) {
                 existing.quantity += item.quantity;
                 existing.purchaseDate = item.purchaseDate;
+                if (item.expiresAt) {
+                    existing.expiresAt = item.expiresAt;
+                }
             } else {
                 this.items.push({ ...item });
             }
@@ -74,6 +77,30 @@ export const usePantryStore = defineStore('pantry', {
         /** Only receipts never seen before, so a re-sync does not double your stock. */
         addFromNewReceipts(receipts: ReceiptInterface[]): number {
             return receipts.reduce((added, receipt) => added + this.addFromReceipt(receipt), 0);
+        },
+
+        /** Something can also be in the house without a receipt to prove it. */
+        addManual(item: Omit<StockItemInterface, 'purchaseDate'> & { purchaseDate?: string }): void {
+            this.addItem({
+                ...item,
+                name: item.name.trim(),
+                quantity: Math.max(1, item.quantity),
+                purchaseDate: item.purchaseDate ?? new Date().toISOString(),
+            });
+        },
+
+        /** A date on the packaging beats any shelf-life estimate. */
+        setExpiry(name: string, expiresAt: string | null): void {
+            const item = this.items.find((stored) => stockKeyFor(stored.name) === stockKeyFor(name));
+            if (!item) {
+                return;
+            }
+            if (expiresAt) {
+                item.expiresAt = expiresAt;
+            } else {
+                delete item.expiresAt;
+            }
+            this.persist();
         },
 
         increase(name: string): void {

@@ -152,3 +152,33 @@ describe('buildStockItems', () => {
         expect(items[0].expiringSoon).toBe(false);
     });
 });
+
+describe('buildStockItems with a date given by hand', () => {
+    it('counts down to your own date instead of the shelf life estimate', () => {
+        const [item] = buildStockItems(
+            [{
+                name: 'AH MELK LV',
+                quantity: 1,
+                category: ProductCategoryEnum.zuivel,
+                purchaseDate: '2026-08-01T10:00:00.000Z',
+                expiresAt: '2026-08-19T10:00:00.000Z',
+            }],
+            new Date('2026-08-09T10:00:00.000Z'),
+        );
+        expect(Math.round(item.daysRemaining)).toBe(10);
+    });
+
+    it('flags your own date once it is close', () => {
+        const [item] = buildStockItems(
+            [{
+                name: 'AH MELK LV',
+                quantity: 1,
+                category: ProductCategoryEnum.zuivel,
+                purchaseDate: '2026-08-08T10:00:00.000Z',
+                expiresAt: '2026-08-10T10:00:00.000Z',
+            }],
+            new Date('2026-08-09T10:00:00.000Z'),
+        );
+        expect(item.expiringSoon).toBe(true);
+    });
+});

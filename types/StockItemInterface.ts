@@ -5,6 +5,7 @@ interface StockItemInterface {
     category: ProductCategoryEnum;
     quantity: number;
     purchaseDate: string;
+    expiresAt?: string;
 }
 
 export type { StockItemInterface as default };

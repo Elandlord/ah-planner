@@ -97,3 +97,51 @@ describe('pantryStore', () => {
         expect(JSON.parse(memory.get('ah-planner-stock-auto-add') ?? 'true')).toBe(false);
     });
 });
+
+describe('manual entries and expiry dates', () => {
+    beforeEach(() => {
+        memory.clear();
+        setActivePinia(createPinia());
+    });
+
+    it('adds something that never came from a receipt', () => {
+        const store = usePantryStore();
+        store.addManual({ name: 'Zelfgemaakte soep', category: ProductCategoryEnum.conserven, quantity: 2 });
+        expect(store.items[0]).toMatchObject({ name: 'Zelfgemaakte soep', quantity: 2 });
+        expect(store.items[0].purchaseDate).toBeTruthy();
+    });
+
+    it('never adds less than one', () => {
+        const store = usePantryStore();
+        store.addManual({ name: 'Brood', category: ProductCategoryEnum.brood, quantity: 0 });
+        expect(store.items[0].quantity).toBe(1);
+    });
+
+    it('tops up an item that is already in stock', () => {
+        const store = usePantryStore();
+        store.addFromReceipt(receipt('ah-1', [['AH BANANEN', 2]]));
+        store.addManual({ name: 'ah bananen', category: ProductCategoryEnum.fruit, quantity: 1 });
+        expect(store.items).toHaveLength(1);
+        expect(store.items[0].quantity).toBe(3);
+    });
+
+    it('keeps a date given by hand', () => {
+        const store = usePantryStore();
+        store.addManual({
+            name: 'Yoghurt',
+            category: ProductCategoryEnum.zuivel,
+            quantity: 1,
+            expiresAt: '2026-08-20T00:00:00.000Z',
+        });
+        expect(store.items[0].expiresAt).toBe('2026-08-20T00:00:00.000Z');
+    });
+
+    it('sets and clears the date of something already in stock', () => {
+        const store = usePantryStore();
+        store.addFromReceipt(receipt('ah-1', [['AH MELK LV', 1]]));
+        store.setExpiry('AH MELK LV', '2026-08-15T00:00:00.000Z');
+        expect(store.items[0].expiresAt).toBe('2026-08-15T00:00:00.000Z');
+        store.setExpiry('AH MELK LV', null);
+        expect(store.items[0].expiresAt).toBeUndefined();
+    });
+});
