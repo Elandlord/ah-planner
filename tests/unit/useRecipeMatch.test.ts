@@ -150,6 +150,8 @@ describe('rankRecipes', () => {
             quantity: 1,
             category: ProductCategoryEnum.groente,
             purchaseDate: '2026-01-18',
+            receiptId: 'receipt-1',
+            itemIndex: 0,
         },
         {
             name: 'boerenkool',
@@ -157,6 +159,8 @@ describe('rankRecipes', () => {
             quantity: 1,
             category: ProductCategoryEnum.groente,
             purchaseDate: '2026-01-18',
+            receiptId: 'receipt-1',
+            itemIndex: 0,
         },
         {
             name: 'rookworst',
@@ -164,6 +168,8 @@ describe('rankRecipes', () => {
             quantity: 1,
             category: ProductCategoryEnum.vlees,
             purchaseDate: '2026-01-18',
+            receiptId: 'receipt-1',
+            itemIndex: 0,
         },
     ];
 
@@ -182,6 +188,8 @@ describe('rankRecipes', () => {
                 quantity: 1,
                 category: ProductCategoryEnum.snacks,
                 purchaseDate: '2026-01-18',
+                receiptId: 'receipt-1',
+                itemIndex: 0,
             },
         ];
 
@@ -203,6 +211,8 @@ describe('rankRecipes', () => {
                 quantity: 1,
                 category: ProductCategoryEnum.groente,
                 purchaseDate: '2025-12-01',
+                receiptId: 'receipt-1',
+                itemIndex: 0,
             },
         ];
 
@@ -223,6 +233,8 @@ describe('filterFreshItems', () => {
                 quantity: 1,
                 category: ProductCategoryEnum.rijst,
                 purchaseDate: '2025-06-01',
+                receiptId: 'receipt-1',
+                itemIndex: 0,
             },
         ];
 
@@ -237,6 +249,25 @@ describe('filterFreshItems', () => {
                 quantity: 1,
                 category: ProductCategoryEnum.vis,
                 purchaseDate: '2026-01-01',
+                receiptId: 'receipt-1',
+                itemIndex: 0,
+            },
+        ];
+
+        expect(filterFreshItems(items, NOW)).toEqual([]);
+    });
+
+    it('drops items marked as consumed even within their shelf-life window', () => {
+        const items: DatedReceiptItemInterface[] = [
+            {
+                name: 'rijst',
+                price: 2.0,
+                quantity: 1,
+                category: ProductCategoryEnum.rijst,
+                purchaseDate: '2026-01-19',
+                receiptId: 'receipt-1',
+                itemIndex: 0,
+                consumedAt: '2026-01-20T08:00:00Z',
             },
         ];
 

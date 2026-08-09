@@ -19,6 +19,8 @@ describe('buildPantryItems', () => {
                 quantity: 1,
                 category: ProductCategoryEnum.vis,
                 purchaseDate: '2026-01-01',
+                receiptId: 'receipt-1',
+                itemIndex: 0,
             },
         ];
 
@@ -33,6 +35,8 @@ describe('buildPantryItems', () => {
                 quantity: 1,
                 category: ProductCategoryEnum.zuivel,
                 purchaseDate: '2026-01-12',
+                receiptId: 'receipt-1',
+                itemIndex: 0,
             },
         ];
 
@@ -50,12 +54,31 @@ describe('buildPantryItems', () => {
                 quantity: 1,
                 category: ProductCategoryEnum.rijst,
                 purchaseDate: '2026-01-19',
+                receiptId: 'receipt-1',
+                itemIndex: 0,
             },
         ];
 
         const [pantryItem] = buildPantryItems(items, NOW);
 
         expect(pantryItem.expiringSoon).toBe(false);
+    });
+
+    it('excludes items marked as consumed', () => {
+        const items: DatedReceiptItemInterface[] = [
+            {
+                name: 'rijst',
+                price: 2.0,
+                quantity: 1,
+                category: ProductCategoryEnum.rijst,
+                purchaseDate: '2026-01-19',
+                receiptId: 'receipt-1',
+                itemIndex: 0,
+                consumedAt: '2026-01-20T08:00:00Z',
+            },
+        ];
+
+        expect(buildPantryItems(items, NOW)).toEqual([]);
     });
 });
 
@@ -69,6 +92,8 @@ describe('groupPantryItemsByCategory', () => {
                     quantity: 1,
                     category: ProductCategoryEnum.zuivel,
                     purchaseDate: '2026-01-19',
+                    receiptId: 'receipt-1',
+                    itemIndex: 0,
                 },
                 {
                     name: 'kaas',
@@ -76,6 +101,8 @@ describe('groupPantryItemsByCategory', () => {
                     quantity: 1,
                     category: ProductCategoryEnum.zuivel,
                     purchaseDate: '2026-01-19',
+                    receiptId: 'receipt-1',
+                    itemIndex: 0,
                 },
                 {
                     name: 'rijst',
@@ -83,6 +110,8 @@ describe('groupPantryItemsByCategory', () => {
                     quantity: 1,
                     category: ProductCategoryEnum.rijst,
                     purchaseDate: '2026-01-19',
+                    receiptId: 'receipt-1',
+                    itemIndex: 0,
                 },
             ],
             NOW,
@@ -101,7 +130,6 @@ describe('buildStockItems', () => {
             [{
                 name: 'AH MELK LV',
                 quantity: 1,
-                price: 1.29,
                 category: ProductCategoryEnum.zuivel,
                 purchaseDate: '2026-07-01T10:00:00.000Z',
             }],
@@ -116,7 +144,6 @@ describe('buildStockItems', () => {
             [{
                 name: 'AH BANANEN',
                 quantity: 1,
-                price: 1.49,
                 category: ProductCategoryEnum.fruit,
                 purchaseDate: '2026-08-08T10:00:00.000Z',
             }],

@@ -1,5 +1,6 @@
 import type AhSyncedReceiptInterface from '~/types/AhSyncedReceiptInterface';
 import type AhProductInterface from '~/types/AhProductInterface';
+import type AhListItemInterface from '~/types/AhListItemInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import { useReceiptStore } from '~/stores/receiptStore';
@@ -125,11 +126,36 @@ export function useAhApi() {
         return response.products;
     }
 
+    /** Reuses the same ranked matching the recipe shopping flow relies on. */
+    async function resolveProducts(names: string[]): Promise<Map<string, AhProductInterface | null>> {
+        if (names.length === 0) {
+            return new Map();
+        }
+        const response = await $fetch<{ suggestions: { query: string; product: AhProductInterface | null }[] }>(
+            '/api/ah/suggest',
+            { method: 'POST', body: { names } },
+        );
+        return new Map(response.suggestions.map((suggestion) => [suggestion.query, suggestion.product]));
+    }
+
+    async function addToList(items: AhListItemInterface[]): Promise<number> {
+        if (items.length === 0) {
+            return 0;
+        }
+        const response = await $fetch<{ added: number }>('/api/ah/list-add', {
+            method: 'POST',
+            body: { items },
+        });
+        return response.added;
+    }
+
     return {
         fetchStatus,
         connect,
         startLogin,
         syncReceipts,
         searchProducts,
+        resolveProducts,
+        addToList,
     };
 }

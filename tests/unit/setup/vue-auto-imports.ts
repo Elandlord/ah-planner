@@ -7,3 +7,4 @@ vi.stubGlobal('watch', watch);
 vi.stubGlobal('nextTick', nextTick);
 vi.stubGlobal('onMounted', onMounted);
 vi.stubGlobal('onUnmounted', onUnmounted);
+vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({ suggestions: [] }));

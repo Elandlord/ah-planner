@@ -4,6 +4,10 @@ import type { PantryItemInterface } from '~/composables/usePantry';
 defineProps<{
     itemsByCategory: Record<string, PantryItemInterface[]>;
 }>();
+
+const emit = defineEmits<{
+    used: [item: PantryItemInterface];
+}>();
 </script>
 
 <template>
@@ -17,7 +21,7 @@ defineProps<{
         </h3>
         <div
             v-for="item in items"
-            :key="`${item.name}-${item.purchaseDate}`"
+            :key="`${item.receiptId}-${item.itemIndex}`"
             class="pantry-item"
             :class="{ 'pantry-item--expiring': item.expiringSoon }"
         >
@@ -29,6 +33,13 @@ defineProps<{
                 Bijna over datum
             </span>
             <span class="item-days">{{ Math.max(0, Math.round(item.daysRemaining)) }} dagen houdbaar</span>
+            <button
+                type="button"
+                class="used-button"
+                @click="emit('used', item)"
+            >
+                Op
+            </button>
         </div>
     </div>
 </template>
@@ -60,5 +71,9 @@ defineProps<{
 
 .item-days {
     @apply text-xs text-gray-400 whitespace-nowrap;
+}
+
+.used-button {
+    @apply text-xs font-semibold text-gray-500 bg-gray-100 rounded px-2 py-0.5 hover:bg-gray-200;
 }
 </style>

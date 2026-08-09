@@ -12,13 +12,7 @@ const search = ref('');
 
 /** The stock is what you say it is; the shelf life only adds a hint of how fresh it still is. */
 const stockWithFreshness = computed(() => buildStockItems(
-    pantryStore.items.map((item) => ({
-        name: item.name,
-        category: item.category,
-        quantity: item.quantity,
-        price: 0,
-        purchaseDate: item.purchaseDate,
-    })),
+    pantryStore.items,
 ));
 
 const visibleItems = computed(() => {

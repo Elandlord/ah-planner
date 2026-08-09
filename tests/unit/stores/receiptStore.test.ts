@@ -479,6 +479,56 @@ describe('receiptStore', () => {
         });
     });
 
+    describe('markItemUsed', () => {
+        it('sets consumedAt on the matching item', () => {
+            // #given
+            const store = useReceiptStore();
+            store.receipts = [makeReceipt({ items: [makeItem({ name: 'Melk' })] })];
+
+            // #when
+            store.markItemUsed('receipt-1', 0);
+
+            // #then
+            expect(store.receipts[0].items[0].consumedAt).toBeDefined();
+        });
+
+        it('persists the change to storage', () => {
+            // #given
+            const store = useReceiptStore();
+            store.receipts = [makeReceipt({ items: [makeItem({ name: 'Melk' })] })];
+
+            // #when
+            store.markItemUsed('receipt-1', 0);
+
+            // #then
+            expect(storedReceipts()[0].items[0].consumedAt).toBeDefined();
+        });
+
+        it('does nothing when the receipt id is unknown', () => {
+            // #given
+            const store = useReceiptStore();
+            store.receipts = [makeReceipt({ items: [makeItem({ name: 'Melk' })] })];
+
+            // #when
+            store.markItemUsed('missing', 0);
+
+            // #then
+            expect(store.receipts[0].items[0].consumedAt).toBeUndefined();
+        });
+
+        it('does nothing when the item index is out of range', () => {
+            // #given
+            const store = useReceiptStore();
+            store.receipts = [makeReceipt({ items: [makeItem({ name: 'Melk' })] })];
+
+            // #when
+            store.markItemUsed('receipt-1', 5);
+
+            // #then
+            expect(store.receipts[0].items[0].consumedAt).toBeUndefined();
+        });
+    });
+
     describe('purchasedCategories', () => {
         it('collects the unique categories of every item', () => {
             // #given
