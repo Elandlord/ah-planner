@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import ShoppingListPage from '~/pages/shopping-list.vue';
 import { useShoppingListStore } from '~/stores/shoppingListStore';
@@ -207,6 +207,61 @@ describe('pages/shopping-list.vue', () => {
 
             // #then
             expect(wrapper.find('.item-sources').exists()).toBe(false);
+        });
+    });
+
+    describe('push to AH', () => {
+        it('pushes resolved unchecked items and reports what could not be matched', async () => {
+            // #given
+            const fetchMock = vi.fn().mockImplementation((url: string) => {
+                if (url === '/api/ah/suggest') {
+                    return Promise.resolve({
+                        suggestions: [
+                            {
+                                query: 'Melk',
+                                product: {
+                                    id: 42,
+                                    title: 'AH Melk',
+                                    brand: 'AH',
+                                    salesUnitSize: '1 l',
+                                    price: 1.29,
+                                    bonusPrice: null,
+                                    isBonus: false,
+                                    imageUrl: null,
+                                },
+                                bonusMechanism: null,
+                            },
+                            { query: 'Onvindbaar', product: null, bonusMechanism: null },
+                        ],
+                    });
+                }
+                if (url === '/api/ah/list-add') {
+                    return Promise.resolve({ added: 1 });
+                }
+                return Promise.resolve({});
+            });
+            vi.stubGlobal('$fetch', fetchMock);
+            const store = useShoppingListStore();
+            store.items = [
+                makeListItem({ name: 'Melk' }),
+                makeListItem({ name: 'Onvindbaar' }),
+            ];
+            const wrapper = await mountListTab();
+
+            // #when
+            const button = wrapper
+                .findAll('.action-btn')
+                .find((btn) => btn.text() === 'Naar AH boodschappenlijst');
+            await button?.trigger('click');
+            await flushPromises();
+
+            // #then
+            expect(fetchMock).toHaveBeenCalledWith('/api/ah/list-add', {
+                method: 'POST',
+                body: { items: [{ productId: 42, quantity: 1, name: 'Melk' }] },
+            });
+            expect(wrapper.find('.push-result').text()).toContain('1 item(en) toegevoegd');
+            expect(wrapper.find('.push-result').text()).toContain('Onvindbaar');
         });
     });
 

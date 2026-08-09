@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { useShoppingListStore } from '~/stores/shoppingListStore';
 import { useReceiptParser } from '~/composables/useReceiptParser';
+import { useAhApi } from '~/composables/useAhApi';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 import type AhProductInterface from '~/types/AhProductInterface';
 
 const shoppingListStore = useShoppingListStore();
 const { categorizeProduct } = useReceiptParser();
+const { resolveProducts, addToList } = useAhApi();
 
 const activeTab = ref<'voorstel' | 'lijst'>('voorstel');
 const newItemName = ref('');
 const newItemCategory = ref<ProductCategoryEnum>(ProductCategoryEnum.overig);
+const pushingToAh = ref(false);
+const pushResult = ref<{ pushed: number; unresolved: string[] } | null>(null);
 
 const categoryOptions = Object.values(ProductCategoryEnum);
 
@@ -34,6 +38,33 @@ function addProduct(product: AhProductInterface): void {
         frequency: 1,
     });
     newItemName.value = '';
+}
+
+async function pushToAh(): Promise<void> {
+    const items = shoppingListStore.uncheckedItems;
+    if (items.length === 0) {
+        return;
+    }
+
+    pushingToAh.value = true;
+    try {
+        const products = await resolveProducts(items.map((item) => item.name));
+        const resolved: { productId: number; quantity: number; name: string }[] = [];
+        const unresolved: string[] = [];
+        for (const item of items) {
+            const product = products.get(item.name);
+            if (product) {
+                resolved.push({ productId: product.id, quantity: 1, name: item.name });
+            } else {
+                unresolved.push(item.name);
+            }
+        }
+
+        const pushed = await addToList(resolved);
+        pushResult.value = { pushed, unresolved };
+    } finally {
+        pushingToAh.value = false;
+    }
 }
 </script>
 
@@ -96,12 +127,30 @@ function addProduct(product: AhProductInterface): void {
                 Genereer uit weekplan
             </button>
             <button
+                v-if="shoppingListStore.uncheckedItems.length > 0"
+                class="action-btn"
+                :disabled="pushingToAh"
+                @click="pushToAh"
+            >
+                {{ pushingToAh ? 'Bezig met versturen…' : 'Naar AH boodschappenlijst' }}
+            </button>
+            <button
                 v-if="shoppingListStore.checkedItems.length > 0"
                 class="action-btn-danger"
                 @click="shoppingListStore.clearChecked()"
             >
                 Afgevinkte verwijderen
             </button>
+        </div>
+
+        <div
+            v-if="pushResult"
+            class="push-result"
+        >
+            <span>{{ pushResult.pushed }} item(en) toegevoegd aan je AH boodschappenlijst.</span>
+            <span v-if="pushResult.unresolved.length > 0">
+                Niet gevonden: {{ pushResult.unresolved.join(', ') }}
+            </span>
         </div>
 
         <div
@@ -223,6 +272,10 @@ function addProduct(product: AhProductInterface): void {
 
 .action-btn-danger {
     @apply text-sm text-red-600 hover:text-red-800 border border-red-200 rounded px-3 py-1;
+}
+
+.push-result {
+    @apply flex flex-col gap-1 text-sm text-gray-600 bg-white rounded-lg shadow-sm p-3 mb-4;
 }
 
 .empty-state {
