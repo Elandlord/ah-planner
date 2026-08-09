@@ -8,6 +8,7 @@ import {
     servingsPerDay,
 } from '~/composables/useWeekPlan';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
+import MealSlotEnum from '~/types/MealSlotEnum';
 import type RecipeInterface from '~/types/RecipeInterface';
 
 const DAYS = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
@@ -55,19 +56,19 @@ describe('buildWeekPlan', () => {
     it('gives each recipe two days in a row', () => {
         const plan = buildWeekPlan(DAYS, [recipe('a'), recipe('b'), recipe('c'), recipe('d')], 2);
         expect(plan).toEqual({
-            Maandag: 'a',
-            Dinsdag: 'a',
-            Woensdag: 'b',
-            Donderdag: 'b',
-            Vrijdag: 'c',
-            Zaterdag: 'c',
-            Zondag: 'd',
+            Maandag: { [MealSlotEnum.dinner]: 'a' },
+            Dinsdag: { [MealSlotEnum.dinner]: 'a' },
+            Woensdag: { [MealSlotEnum.dinner]: 'b' },
+            Donderdag: { [MealSlotEnum.dinner]: 'b' },
+            Vrijdag: { [MealSlotEnum.dinner]: 'c' },
+            Zaterdag: { [MealSlotEnum.dinner]: 'c' },
+            Zondag: { [MealSlotEnum.dinner]: 'd' },
         });
     });
 
     it('wraps around when there are fewer recipes than runs', () => {
         const plan = buildWeekPlan(DAYS, [recipe('a'), recipe('b')], 2);
-        expect(plan.Zaterdag).toBe('a');
+        expect(plan.Zaterdag[MealSlotEnum.dinner]).toBe('a');
     });
 
     it('returns nothing without recipes', () => {
@@ -77,9 +78,20 @@ describe('buildWeekPlan', () => {
 
 describe('daysPerRecipe', () => {
     it('collects the days a recipe covers', () => {
-        const days = daysPerRecipe({ Maandag: 'a', Dinsdag: 'a', Woensdag: 'b' });
+        const days = daysPerRecipe({
+            Maandag: { [MealSlotEnum.dinner]: 'a' },
+            Dinsdag: { [MealSlotEnum.dinner]: 'a' },
+            Woensdag: { [MealSlotEnum.dinner]: 'b' },
+        });
         expect(days.get('a')).toEqual(['Maandag', 'Dinsdag']);
         expect(days.get('b')).toEqual(['Woensdag']);
+    });
+
+    it('counts a recipe once per meal slot on the same day', () => {
+        const days = daysPerRecipe({
+            Maandag: { [MealSlotEnum.dinner]: 'a', [MealSlotEnum.lunch]: 'a' },
+        });
+        expect(days.get('a')).toEqual(['Maandag', 'Maandag']);
     });
 });
 

@@ -8,7 +8,9 @@ import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import type ShoppingListItemInterface from '~/types/ShoppingListItemInterface';
 import type RecipeInterface from '~/types/RecipeInterface';
 import type RecipeIngredientInterface from '~/types/RecipeIngredientInterface';
+import type WeekPlanInterface from '~/types/WeekPlanInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
+import MealSlotEnum from '~/types/MealSlotEnum';
 
 const STORAGE_KEY = 'ah-planner-shopping-list';
 
@@ -89,7 +91,11 @@ function seedWeekPlan(weekPlan: Record<string, string>, recipes: RecipeInterface
     const recipeStore = useRecipeStore();
     recipeStore.allRecipes = [];
     recipeStore.userRecipes = recipes;
-    recipeStore.weekPlans[recipeStore.currentWeekStart] = weekPlan;
+    const nested: WeekPlanInterface = {};
+    for (const [day, recipeId] of Object.entries(weekPlan)) {
+        nested[day] = { [MealSlotEnum.dinner]: recipeId };
+    }
+    recipeStore.weekPlans[recipeStore.currentWeekStart] = nested;
 }
 
 function storedItems(): ShoppingListItemInterface[] {

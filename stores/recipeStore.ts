@@ -246,6 +246,9 @@ export const useRecipeStore = defineStore('recipe', {
                 plan[from][mealSlot] = displaced;
             } else {
                 delete plan[from][mealSlot];
+                if (Object.keys(plan[from]).length === 0) {
+                    delete plan[from];
+                }
             }
             this.persistWeekPlans();
         },

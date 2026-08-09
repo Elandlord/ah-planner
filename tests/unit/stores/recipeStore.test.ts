@@ -7,6 +7,7 @@ import type RecipeIngredientInterface from '~/types/RecipeIngredientInterface';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
+import MealSlotEnum from '~/types/MealSlotEnum';
 
 const SAVED_RECIPES_KEY = 'ah-planner-saved-recipes';
 const USER_RECIPES_KEY = 'ah-planner-user-recipes';
@@ -132,8 +133,27 @@ describe('recipeStore', () => {
             const store = useRecipeStore();
 
             // #then
-            expect(store.weekPlan).toEqual({ woensdag: 'recipe-1' });
-            expect(store.weekPlans).toEqual({ [store.currentWeekStart]: { woensdag: 'recipe-1' } });
+            expect(store.weekPlan).toEqual({ woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } });
+            expect(store.weekPlans).toEqual({
+                [store.currentWeekStart]: { woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } },
+            });
+        });
+
+        it('migrates a per-week plan whose days are still flat recipe ids', () => {
+            // #given
+            vi.stubGlobal('localStorage', createLocalStorageStub());
+            localStorage.setItem(
+                WEEK_PLAN_KEY,
+                JSON.stringify({ '2026-01-05': { woensdag: 'recipe-1' } }),
+            );
+
+            // #when
+            const store = useRecipeStore();
+
+            // #then
+            expect(store.weekPlans).toEqual({
+                '2026-01-05': { woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } },
+            });
         });
     });
 
@@ -292,18 +312,21 @@ describe('recipeStore', () => {
     });
 
     describe('weekPlanRecipes', () => {
-        it('maps every planned day to its recipe', () => {
+        it('maps every planned day and meal slot to its recipe', () => {
             // #given
             const store = useRecipeStore();
             store.allRecipes = [makeRecipe(), makeRecipe({ id: 'recipe-2' })];
 
             // #when
-            store.weekPlans[store.currentWeekStart] = { maandag: 'recipe-2', dinsdag: 'recipe-1' };
+            store.weekPlans[store.currentWeekStart] = {
+                maandag: { [MealSlotEnum.dinner]: 'recipe-2' },
+                dinsdag: { [MealSlotEnum.dinner]: 'recipe-1' },
+            };
 
             // #then
             expect(store.weekPlanRecipes).toEqual({
-                maandag: store.allRecipes[1],
-                dinsdag: store.allRecipes[0],
+                maandag: { [MealSlotEnum.dinner]: store.allRecipes[1] },
+                dinsdag: { [MealSlotEnum.dinner]: store.allRecipes[0] },
             });
         });
 
@@ -313,15 +336,15 @@ describe('recipeStore', () => {
             store.allRecipes = [makeRecipe()];
 
             // #when
-            store.weekPlans[store.currentWeekStart] = { maandag: 'missing' };
+            store.weekPlans[store.currentWeekStart] = { maandag: { [MealSlotEnum.dinner]: 'missing' } };
 
             // #then
-            expect(store.weekPlanRecipes.maandag).toBeUndefined();
+            expect(store.weekPlanRecipes.maandag?.[MealSlotEnum.dinner]).toBeUndefined();
         });
     });
 
     describe('assignToDay', () => {
-        it('stores the recipe id for the given day', () => {
+        it('stores the recipe id for the given day on the dinner slot by default', () => {
             // #given
             const store = useRecipeStore();
 
@@ -329,19 +352,30 @@ describe('recipeStore', () => {
             store.assignToDay('woensdag', 'recipe-1');
 
             // #then
-            expect(store.weekPlan).toEqual({ woensdag: 'recipe-1' });
+            expect(store.weekPlan).toEqual({ woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } });
+        });
+
+        it('stores the recipe id on the given meal slot', () => {
+            // #given
+            const store = useRecipeStore();
+
+            // #when
+            store.assignToDay('woensdag', 'recipe-1', MealSlotEnum.lunch);
+
+            // #then
+            expect(store.weekPlan).toEqual({ woensdag: { [MealSlotEnum.lunch]: 'recipe-1' } });
         });
 
         it('replaces the recipe already assigned to that day', () => {
             // #given
             const store = useRecipeStore();
-            store.weekPlans[store.currentWeekStart] = { woensdag: 'recipe-1' };
+            store.weekPlans[store.currentWeekStart] = { woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } };
 
             // #when
             store.assignToDay('woensdag', 'recipe-2');
 
             // #then
-            expect(store.weekPlan).toEqual({ woensdag: 'recipe-2' });
+            expect(store.weekPlan).toEqual({ woensdag: { [MealSlotEnum.dinner]: 'recipe-2' } });
         });
 
         it('persists the week plan to storage', () => {
@@ -353,7 +387,9 @@ describe('recipeStore', () => {
 
             // #then
             expect(localStorage.getItem(WEEK_PLAN_KEY)).toBe(
-                JSON.stringify({ [store.currentWeekStart]: { woensdag: 'recipe-1' } }),
+                JSON.stringify({
+                    [store.currentWeekStart]: { woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } },
+                }),
             );
         });
     });
@@ -363,7 +399,7 @@ describe('recipeStore', () => {
             // #given
             const store = useRecipeStore();
             store.savedRecipeIds = ['recipe-1'];
-            store.weekPlans[store.currentWeekStart] = { woensdag: 'recipe-1' };
+            store.weekPlans[store.currentWeekStart] = { woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } };
             store.userRecipes = [makeRecipe({ id: 'user-1' })];
 
             // #when
@@ -372,7 +408,9 @@ describe('recipeStore', () => {
             // #then
             expect(exported).toEqual({
                 savedRecipeIds: ['recipe-1'],
-                weekPlans: { [store.currentWeekStart]: { woensdag: 'recipe-1' } },
+                weekPlans: {
+                    [store.currentWeekStart]: { woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } },
+                },
                 userRecipes: [makeRecipe({ id: 'user-1' })],
             });
         });
@@ -383,19 +421,21 @@ describe('recipeStore', () => {
             // #given
             const store = useRecipeStore();
             store.savedRecipeIds = ['recipe-1'];
-            store.weekPlans[store.currentWeekStart] = { woensdag: 'recipe-1' };
+            store.weekPlans[store.currentWeekStart] = { woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } };
             store.userRecipes = [makeRecipe({ id: 'user-1' })];
 
             // #when
             store.importData({
                 savedRecipeIds: ['recipe-2'],
-                weekPlans: { '2026-01-05': { dinsdag: 'recipe-2' } },
+                weekPlans: { '2026-01-05': { dinsdag: { [MealSlotEnum.dinner]: 'recipe-2' } } },
                 userRecipes: [makeRecipe({ id: 'user-2' })],
             });
 
             // #then
             expect(store.savedRecipeIds).toEqual(['recipe-2']);
-            expect(store.weekPlans).toEqual({ '2026-01-05': { dinsdag: 'recipe-2' } });
+            expect(store.weekPlans).toEqual({
+                '2026-01-05': { dinsdag: { [MealSlotEnum.dinner]: 'recipe-2' } },
+            });
             expect(store.userRecipes).toEqual([makeRecipe({ id: 'user-2' })]);
         });
 
@@ -406,14 +446,14 @@ describe('recipeStore', () => {
             // #when
             store.importData({
                 savedRecipeIds: ['recipe-2'],
-                weekPlans: { '2026-01-05': { dinsdag: 'recipe-2' } },
+                weekPlans: { '2026-01-05': { dinsdag: { [MealSlotEnum.dinner]: 'recipe-2' } } },
                 userRecipes: [makeRecipe({ id: 'user-2' })],
             });
 
             // #then
             expect(localStorage.getItem(SAVED_RECIPES_KEY)).toBe(JSON.stringify(['recipe-2']));
             expect(localStorage.getItem(WEEK_PLAN_KEY)).toBe(
-                JSON.stringify({ '2026-01-05': { dinsdag: 'recipe-2' } }),
+                JSON.stringify({ '2026-01-05': { dinsdag: { [MealSlotEnum.dinner]: 'recipe-2' } } }),
             );
             expect(localStorage.getItem(USER_RECIPES_KEY)).toBe(
                 JSON.stringify([makeRecipe({ id: 'user-2' })]),
@@ -422,22 +462,39 @@ describe('recipeStore', () => {
     });
 
     describe('removeFromDay', () => {
-        it('removes the recipe assigned to the given day', () => {
+        it('removes the recipe assigned to the given day on the dinner slot', () => {
             // #given
             const store = useRecipeStore();
-            store.weekPlans[store.currentWeekStart] = { woensdag: 'recipe-1', donderdag: 'recipe-2' };
+            store.weekPlans[store.currentWeekStart] = {
+                woensdag: { [MealSlotEnum.dinner]: 'recipe-1' },
+                donderdag: { [MealSlotEnum.dinner]: 'recipe-2' },
+            };
 
             // #when
             store.removeFromDay('woensdag');
 
             // #then
-            expect(store.weekPlan).toEqual({ donderdag: 'recipe-2' });
+            expect(store.weekPlan).toEqual({ donderdag: { [MealSlotEnum.dinner]: 'recipe-2' } });
+        });
+
+        it('keeps the other meal slot when only one slot is removed', () => {
+            // #given
+            const store = useRecipeStore();
+            store.weekPlans[store.currentWeekStart] = {
+                woensdag: { [MealSlotEnum.dinner]: 'recipe-1', [MealSlotEnum.lunch]: 'recipe-2' },
+            };
+
+            // #when
+            store.removeFromDay('woensdag', MealSlotEnum.dinner);
+
+            // #then
+            expect(store.weekPlan).toEqual({ woensdag: { [MealSlotEnum.lunch]: 'recipe-2' } });
         });
 
         it('persists the week plan to storage', () => {
             // #given
             const store = useRecipeStore();
-            store.weekPlans[store.currentWeekStart] = { woensdag: 'recipe-1' };
+            store.weekPlans[store.currentWeekStart] = { woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } };
 
             // #when
             store.removeFromDay('woensdag');
@@ -455,8 +512,11 @@ describe('recipeStore', () => {
             const store = useRecipeStore();
             store.userRecipes = [makeRecipe({ id: 'recipe-1' })];
             store.weekPlans = {
-                [store.currentWeekStart]: { woensdag: 'recipe-1' },
-                '2026-01-05': { maandag: 'recipe-1', dinsdag: 'recipe-2' },
+                [store.currentWeekStart]: { woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } },
+                '2026-01-05': {
+                    maandag: { [MealSlotEnum.dinner]: 'recipe-1' },
+                    dinsdag: { [MealSlotEnum.dinner]: 'recipe-2' },
+                },
             };
 
             // #when
@@ -465,7 +525,7 @@ describe('recipeStore', () => {
             // #then
             expect(store.weekPlans).toEqual({
                 [store.currentWeekStart]: {},
-                '2026-01-05': { dinsdag: 'recipe-2' },
+                '2026-01-05': { dinsdag: { [MealSlotEnum.dinner]: 'recipe-2' } },
             });
         });
     });
