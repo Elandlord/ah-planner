@@ -1,6 +1,8 @@
 import type BackupInterface from '~/types/BackupInterface';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import type RecipeInterface from '~/types/RecipeInterface';
+import type WeekPlanInterface from '~/types/WeekPlanInterface';
+import MealSlotEnum from '~/types/MealSlotEnum';
 import { useCategoryOverrideStore } from '~/stores/categoryOverrideStore';
 import { useReceiptStore } from '~/stores/receiptStore';
 import { getWeekStart, useRecipeStore } from '~/stores/recipeStore';
@@ -75,8 +77,17 @@ function restoreBackup(backup: BackupInterface): void {
     const shoppingListStore = useShoppingListStore();
     const categoryOverrideStore = useCategoryOverrideStore();
 
-    const weekPlans =
-        backup.version === 1 ? { [getWeekStart(new Date())]: backup.weekPlan } : backup.weekPlans;
+    const weekPlans: Record<string, WeekPlanInterface> =
+        backup.version === 1
+            ? {
+                  [getWeekStart(new Date())]: Object.fromEntries(
+                      Object.entries(backup.weekPlan).map(([day, recipeId]) => [
+                          day,
+                          { [MealSlotEnum.dinner]: recipeId },
+                      ]),
+                  ) as WeekPlanInterface,
+              }
+            : backup.weekPlans;
 
     receiptStore.importData(backup.receipts);
     recipeStore.importData({

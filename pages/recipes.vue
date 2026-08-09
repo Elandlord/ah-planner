@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type RecipeInterface from '~/types/RecipeInterface';
+import MealSlotEnum from '~/types/MealSlotEnum';
 import { useRecipeStore } from '~/stores/recipeStore';
 import { filterRecipes, recipeCategories } from '~/composables/useRecipeFilters';
 import { buildWeekPlan, pickRandom, recipesNeeded } from '~/composables/useWeekPlan';
@@ -7,6 +8,10 @@ import { sortByBonus, useRecipeBonus } from '~/composables/useRecipeBonus';
 import { useToast } from '~/composables/useToast';
 
 const DAYS = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
+const MEAL_SLOTS: { key: MealSlotEnum; label: string }[] = [
+    { key: MealSlotEnum.dinner, label: 'Diner' },
+    { key: MealSlotEnum.lunch, label: 'Lunch' },
+];
 
 const recipeStore = useRecipeStore();
 const toast = useToast();
@@ -29,7 +34,7 @@ const formKey = computed(() => editedRecipe.value?.id ?? 'new');
 const category = ref('Alles');
 const search = ref('');
 const openRecipeId = ref<string | null>(null);
-const draggedDay = ref<string | null>(null);
+const draggedSlot = ref<{ day: string; slot: MealSlotEnum } | null>(null);
 
 /** A recipe whose ingredients are in the bonus this week is worth cooking first. */
 const suggested = computed(() => sortByBonus(
@@ -75,15 +80,22 @@ function randomiseWeek(): void {
 
 onMounted(() => loadBonusData(recipeStore.availableRecipes));
 
-function startDrag(day: string): void {
-    draggedDay.value = day;
+function startDrag(day: string, slot: MealSlotEnum): void {
+    draggedSlot.value = { day, slot };
 }
 
-function dropOn(day: string): void {
-    if (draggedDay.value) {
-        recipeStore.swapDays(draggedDay.value, day);
+function dropOn(day: string, slot: MealSlotEnum): void {
+    if (draggedSlot.value && draggedSlot.value.slot === slot) {
+        recipeStore.swapDays(draggedSlot.value.day, day, slot);
     }
-    draggedDay.value = null;
+    draggedSlot.value = null;
+}
+
+function assignSlot(day: string, slot: MealSlotEnum, recipeId: string): void {
+    if (!recipeId) {
+        return;
+    }
+    recipeStore.assignToDay(day, recipeId, slot);
 }
 
 function openNewRecipeForm(): void {
@@ -216,33 +228,53 @@ function saveRecipe(recipe: Omit<RecipeInterface, 'id'>): void {
                     v-for="day in DAYS"
                     :key="day"
                     class="day-row"
-                    :class="{ 'day-row--dragging': draggedDay === day }"
-                    draggable="true"
-                    @dragstart="startDrag(day)"
-                    @dragover.prevent
-                    @drop="dropOn(day)"
                 >
                     <span class="day-name">{{ day }}</span>
-                    <button
-                        v-if="recipeStore.weekPlanRecipes[day]"
-                        class="day-recipe"
-                        @click="openRecipe(recipeStore.weekPlan[day])"
+                    <div
+                        v-for="slot in MEAL_SLOTS"
+                        :key="slot.key"
+                        class="meal-slot"
+                        :class="{
+                            'meal-slot--dragging':
+                                draggedSlot?.day === day && draggedSlot?.slot === slot.key,
+                        }"
+                        draggable="true"
+                        @dragstart="startDrag(day, slot.key)"
+                        @dragover.prevent
+                        @drop="dropOn(day, slot.key)"
                     >
-                        {{ recipeStore.weekPlanRecipes[day]?.name }}
-                    </button>
-                    <span
-                        v-else
-                        class="day-empty"
-                    >
-                        Geen recept
-                    </span>
-                    <button
-                        v-if="recipeStore.weekPlanRecipes[day]"
-                        class="remove-day"
-                        @click="recipeStore.removeFromDay(day)"
-                    >
-                        &times;
-                    </button>
+                        <span class="slot-label">{{ slot.label }}</span>
+                        <button
+                            v-if="recipeStore.weekPlanRecipes[day]?.[slot.key]"
+                            class="day-recipe"
+                            @click="openRecipe(recipeStore.weekPlan[day][slot.key] as string)"
+                        >
+                            {{ recipeStore.weekPlanRecipes[day]?.[slot.key]?.name }}
+                        </button>
+                        <select
+                            v-else
+                            class="slot-select"
+                            @change="assignSlot(day, slot.key, ($event.target as HTMLSelectElement).value)"
+                        >
+                            <option value="">
+                                Geen recept
+                            </option>
+                            <option
+                                v-for="recipe in recipeStore.availableRecipes"
+                                :key="recipe.id"
+                                :value="recipe.id"
+                            >
+                                {{ recipe.name }}
+                            </option>
+                        </select>
+                        <button
+                            v-if="recipeStore.weekPlanRecipes[day]?.[slot.key]"
+                            class="remove-day"
+                            @click="recipeStore.removeFromDay(day, slot.key)"
+                        >
+                            &times;
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -468,23 +500,31 @@ function saveRecipe(recipe: Omit<RecipeInterface, 'id'>): void {
 }
 
 .day-row {
-    @apply flex items-center gap-3 p-2 rounded-md border border-transparent bg-gray-50 cursor-grab;
-}
-
-.day-row--dragging {
-    @apply border-blue-400 opacity-60;
+    @apply flex flex-wrap items-center gap-3 p-2 rounded-md bg-gray-50;
 }
 
 .day-name {
     @apply w-28 text-sm font-medium text-gray-700;
 }
 
+.meal-slot {
+    @apply flex flex-1 items-center gap-2 p-1.5 rounded-md border border-transparent cursor-grab;
+}
+
+.meal-slot--dragging {
+    @apply border-blue-400 opacity-60;
+}
+
+.slot-label {
+    @apply w-12 text-xs text-gray-400;
+}
+
 .day-recipe {
     @apply flex-1 text-left text-sm text-blue-600 hover:underline;
 }
 
-.day-empty {
-    @apply flex-1 text-sm text-gray-400;
+.slot-select {
+    @apply flex-1 text-sm text-gray-500 border rounded-md px-1.5 py-0.5;
 }
 
 .remove-day {

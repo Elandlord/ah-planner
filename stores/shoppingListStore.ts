@@ -145,33 +145,35 @@ export const useShoppingListStore = defineStore('shoppingList', {
                 }
             >();
 
-            for (const [day, recipe] of Object.entries(recipeStore.weekPlanRecipes)) {
-                if (!recipe) {
-                    continue;
-                }
-
-                const { missingIngredients } = scoreRecipe(recipe, purchasedNames, purchasedCategories);
-                const missingNames = new Set(missingIngredients.map((name) => name.toLowerCase()));
-
-                for (const ingredient of recipe.ingredients) {
-                    const name = ingredient.name.toLowerCase();
-                    if (!missingNames.has(name)) {
+            for (const [day, meals] of Object.entries(recipeStore.weekPlanRecipes)) {
+                for (const recipe of Object.values(meals)) {
+                    if (!recipe) {
                         continue;
                     }
 
-                    const source = { day, recipeName: recipe.name };
-                    const existing = missingByName.get(name);
-                    if (existing) {
-                        existing.count += 1;
-                        existing.sources.push(source);
-                        existing.amounts.push(ingredient.amount);
-                    } else {
-                        missingByName.set(name, {
-                            category: ingredient.category,
-                            count: 1,
-                            sources: [source],
-                            amounts: [ingredient.amount],
-                        });
+                    const { missingIngredients } = scoreRecipe(recipe, purchasedNames, purchasedCategories);
+                    const missingNames = new Set(missingIngredients.map((name) => name.toLowerCase()));
+
+                    for (const ingredient of recipe.ingredients) {
+                        const name = ingredient.name.toLowerCase();
+                        if (!missingNames.has(name)) {
+                            continue;
+                        }
+
+                        const source = { day, recipeName: recipe.name };
+                        const existing = missingByName.get(name);
+                        if (existing) {
+                            existing.count += 1;
+                            existing.sources.push(source);
+                            existing.amounts.push(ingredient.amount);
+                        } else {
+                            missingByName.set(name, {
+                                category: ingredient.category,
+                                count: 1,
+                                sources: [source],
+                                amounts: [ingredient.amount],
+                            });
+                        }
                     }
                 }
             }

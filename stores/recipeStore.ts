@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia';
 import type RecipeInterface from '~/types/RecipeInterface';
 import type WeekPlanInterface from '~/types/WeekPlanInterface';
+import type { DayPlanInterface } from '~/types/WeekPlanInterface';
+import MealSlotEnum from '~/types/MealSlotEnum';
 import { rankRecipes } from '~/composables/useRecipeMatch';
 import { useReceiptStore } from '~/stores/receiptStore';
 import { recipes } from '~/data/recipes';
@@ -29,6 +31,22 @@ function getWeekStart(date: Date): string {
     return start.toISOString().slice(0, 10);
 }
 
+/** Older week plans stored a bare recipe id per day, before there was a meal slot to pick. */
+function migrateDayPlan(value: unknown): DayPlanInterface {
+    if (typeof value === 'string') {
+        return { [MealSlotEnum.dinner]: value };
+    }
+    return (value ?? {}) as DayPlanInterface;
+}
+
+function migrateWeekPlan(plan: Record<string, unknown>): WeekPlanInterface {
+    const migrated: WeekPlanInterface = {};
+    for (const [day, value] of Object.entries(plan)) {
+        migrated[day] = migrateDayPlan(value);
+    }
+    return migrated;
+}
+
 function parseWeekPlans(key: string): Record<string, WeekPlanInterface> {
     const stored = localStorage.getItem(key);
     if (!stored) {
@@ -50,10 +68,14 @@ function parseWeekPlans(key: string): Record<string, WeekPlanInterface> {
     const values = Object.values(obj);
     const isLegacyFlatPlan = values.length > 0 && values.every((v) => typeof v === 'string');
     if (isLegacyFlatPlan) {
-        return { [getWeekStart(new Date())]: obj as WeekPlanInterface };
+        return { [getWeekStart(new Date())]: migrateWeekPlan(obj) };
     }
 
-    return obj as Record<string, WeekPlanInterface>;
+    const migrated: Record<string, WeekPlanInterface> = {};
+    for (const [weekStart, plan] of Object.entries(obj)) {
+        migrated[weekStart] = migrateWeekPlan((plan ?? {}) as Record<string, unknown>);
+    }
+    return migrated;
 }
 
 function nextUserRecipeId(existingRecipes: RecipeInterface[]): string {
@@ -101,10 +123,14 @@ export const useRecipeStore = defineStore('recipe', {
             return state.weekPlans[state.currentWeekStart] ?? {};
         },
 
-        weekPlanRecipes(): Record<string, RecipeInterface | undefined> {
-            const result: Record<string, RecipeInterface | undefined> = {};
-            for (const [day, recipeId] of Object.entries(this.weekPlan)) {
-                result[day] = this.availableRecipes.find((r) => r.id === recipeId);
+        weekPlanRecipes(): Record<string, Partial<Record<MealSlotEnum, RecipeInterface | undefined>>> {
+            const result: Record<string, Partial<Record<MealSlotEnum, RecipeInterface | undefined>>> = {};
+            for (const [day, meals] of Object.entries(this.weekPlan)) {
+                const dayResult: Partial<Record<MealSlotEnum, RecipeInterface | undefined>> = {};
+                for (const [slot, recipeId] of Object.entries(meals) as [MealSlotEnum, string][]) {
+                    dayResult[slot] = this.availableRecipes.find((r) => r.id === recipeId);
+                }
+                result[day] = dayResult;
             }
             return result;
         },
@@ -141,10 +167,15 @@ export const useRecipeStore = defineStore('recipe', {
 
             let removedAny = false;
             for (const plan of Object.values(this.weekPlans)) {
-                for (const [day, plannedId] of Object.entries(plan)) {
-                    if (plannedId === recipeId) {
+                for (const [day, meals] of Object.entries(plan)) {
+                    for (const [slot, plannedId] of Object.entries(meals) as [MealSlotEnum, string][]) {
+                        if (plannedId === recipeId) {
+                            delete meals[slot];
+                            removedAny = true;
+                        }
+                    }
+                    if (Object.keys(meals).length === 0) {
                         delete plan[day];
-                        removedAny = true;
                     }
                 }
             }
@@ -173,17 +204,20 @@ export const useRecipeStore = defineStore('recipe', {
             );
         },
 
-        assignToDay(day: string, recipeId: string): void {
-            this.assignToDays([day], recipeId);
+        assignToDay(day: string, recipeId: string, mealSlot: MealSlotEnum = MealSlotEnum.dinner): void {
+            this.assignToDays([day], recipeId, mealSlot);
         },
 
         /** The same pan often feeds two days, so a recipe can take several at once. */
-        assignToDays(days: string[], recipeId: string): void {
+        assignToDays(days: string[], recipeId: string, mealSlot: MealSlotEnum = MealSlotEnum.dinner): void {
             if (!this.weekPlans[this.currentWeekStart]) {
                 this.weekPlans[this.currentWeekStart] = {};
             }
             for (const day of days) {
-                this.weekPlans[this.currentWeekStart][day] = recipeId;
+                if (!this.weekPlans[this.currentWeekStart][day]) {
+                    this.weekPlans[this.currentWeekStart][day] = {};
+                }
+                this.weekPlans[this.currentWeekStart][day][mealSlot] = recipeId;
             }
             this.persistWeekPlans();
         },
@@ -193,19 +227,25 @@ export const useRecipeStore = defineStore('recipe', {
             this.persistWeekPlans();
         },
 
-        /** Dropping a day on another swaps them, so an occupied day is never overwritten. */
-        swapDays(from: string, to: string): void {
+        /** Dropping a day on another swaps that meal slot, so an occupied slot is never overwritten. */
+        swapDays(from: string, to: string, mealSlot: MealSlotEnum = MealSlotEnum.dinner): void {
             const plan = this.weekPlans[this.currentWeekStart];
-            const moving = plan?.[from];
+            const moving = plan?.[from]?.[mealSlot];
             if (!plan || !moving || from === to) {
                 return;
             }
-            const displaced = plan[to];
-            plan[to] = moving;
+            if (!plan[to]) {
+                plan[to] = {};
+            }
+            if (!plan[from]) {
+                plan[from] = {};
+            }
+            const displaced = plan[to][mealSlot];
+            plan[to][mealSlot] = moving;
             if (displaced) {
-                plan[from] = displaced;
+                plan[from][mealSlot] = displaced;
             } else {
-                delete plan[from];
+                delete plan[from][mealSlot];
             }
             this.persistWeekPlans();
         },
@@ -236,10 +276,13 @@ export const useRecipeStore = defineStore('recipe', {
             );
         },
 
-        removeFromDay(day: string): void {
+        removeFromDay(day: string, mealSlot: MealSlotEnum = MealSlotEnum.dinner): void {
             const plan = this.weekPlans[this.currentWeekStart];
-            if (plan) {
-                delete plan[day];
+            if (plan?.[day]) {
+                delete plan[day][mealSlot];
+                if (Object.keys(plan[day]).length === 0) {
+                    delete plan[day];
+                }
             }
             this.persistWeekPlans();
         },

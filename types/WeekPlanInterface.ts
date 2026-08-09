@@ -1,3 +1,6 @@
-type WeekPlanInterface = Record<string, string>;
+import type MealSlotEnum from '~/types/MealSlotEnum';
 
-export type { WeekPlanInterface as default };
+type DayPlanInterface = Partial<Record<MealSlotEnum, string>>;
+type WeekPlanInterface = Record<string, DayPlanInterface>;
+
+export type { WeekPlanInterface as default, DayPlanInterface };
