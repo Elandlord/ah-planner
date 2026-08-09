@@ -3,10 +3,27 @@ import { useReceiptStore } from '~/stores/receiptStore';
 import { useReceiptExport } from '~/composables/useReceiptExport';
 import { groupByMonth } from '~/composables/useReceiptGrouping';
 import { useReceiptOriginalStore } from '~/composables/useReceiptOriginalStore';
+import { usePantryStore } from '~/stores/pantryStore';
+import { useToast } from '~/composables/useToast';
 
 const receiptStore = useReceiptStore();
 const { filterByWeek, filterByMonth, toCsv, toJson, downloadFile } = useReceiptExport();
 const originalStore = useReceiptOriginalStore();
+const pantryStore = usePantryStore();
+const toast = useToast();
+
+function addToStock(receiptId: string): void {
+    const receipt = receiptStore.receipts.find((candidate) => candidate.id === receiptId);
+    if (!receipt) {
+        return;
+    }
+    const added = pantryStore.addFromReceipt(receipt);
+    if (added === 0) {
+        toast.info('Deze bon staat al in je voorraad.');
+        return;
+    }
+    toast.success(`${added} producten aan je voorraad toegevoegd.`);
+}
 
 const expandedId = ref<string | null>(null);
 const activeFilter = ref<'all' | 'week' | 'month'>('all');
@@ -240,6 +257,15 @@ watch(activeFilter, () => {
                             <span class="item-price">&euro;{{ item.price.toFixed(2) }}</span>
                         </div>
                         <button
+                            class="stock-btn"
+                            :disabled="pantryStore.isProcessed(receipt.id)"
+                            @click="addToStock(receipt.id)"
+                        >
+                            {{ pantryStore.isProcessed(receipt.id)
+                                ? 'Staat in voorraad'
+                                : 'Aan voorraad toevoegen' }}
+                        </button>
+                        <button
                             v-if="receipt.hasOriginal"
                             class="view-original-btn"
                             @click="viewOriginal(receipt.id)"
@@ -386,6 +412,10 @@ watch(activeFilter, () => {
 
 .view-original-btn {
     @apply text-sm text-blue-600 hover:text-blue-800;
+}
+
+.stock-btn {
+    @apply text-sm text-blue-600 hover:text-blue-800 mt-3 mr-3 disabled:text-gray-400 disabled:cursor-not-allowed;
 }
 
 .delete-btn {

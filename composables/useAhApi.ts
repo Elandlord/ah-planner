@@ -3,6 +3,7 @@ import type AhProductInterface from '~/types/AhProductInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import { useReceiptStore } from '~/stores/receiptStore';
+import { usePantryStore } from '~/stores/pantryStore';
 import { useProductCategories } from '~/composables/useProductCategories';
 
 const SYNCED_ID_PREFIX = 'ah-';
@@ -30,6 +31,7 @@ function toReceipt(
 
 export function useAhApi() {
     const receiptStore = useReceiptStore();
+    const pantryStore = usePantryStore();
     const { categorizeProduct } = useProductCategories();
 
     async function fetchStatus(): Promise<boolean> {
@@ -84,14 +86,20 @@ export function useAhApi() {
         const categoryOf = (name: string): ProductCategoryEnum =>
             toKnownCategory(categories[name]) ?? categorizeProduct(name);
 
+        const stocked: ReceiptInterface[] = [];
         for (const synced of response.receipts) {
             const receipt = toReceipt(synced, categoryOf);
             const existing = receiptStore.receipts.some((stored) => stored.id === receipt.id);
             if (existing) {
                 receiptStore.updateReceipt(receipt.id, receipt);
-                continue;
+            } else {
+                receiptStore.addReceipt(receipt);
             }
-            receiptStore.addReceipt(receipt);
+            stocked.push(receipt);
+        }
+
+        if (pantryStore.autoAdd) {
+            pantryStore.addFromNewReceipts(stocked);
         }
         return response.receipts.length;
     }

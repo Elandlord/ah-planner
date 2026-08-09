@@ -28,6 +28,26 @@ export function buildPantryItems(
     });
 }
 
+/**
+ * The stock you keep by hand shows everything you put in it. Passing its shelf life makes an
+ * item worth flagging, never worth hiding, because only you can say it is gone.
+ */
+export function buildStockItems(
+    items: DatedReceiptItemInterface[],
+    now: Date = new Date(),
+): PantryItemInterface[] {
+    return items.map((item) => {
+        const ageInDays = (now.getTime() - new Date(item.purchaseDate).getTime()) / DAY_IN_MS;
+        const daysRemaining = shelfLifeDaysFor(item.category) - ageInDays;
+
+        return {
+            ...item,
+            daysRemaining,
+            expiringSoon: daysRemaining <= EXPIRING_SOON_THRESHOLD_DAYS,
+        };
+    });
+}
+
 export function groupPantryItemsByCategory(
     items: PantryItemInterface[],
 ): Record<string, PantryItemInterface[]> {

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
     buildPantryItems,
+    buildStockItems,
     groupPantryItemsByCategory,
     EXPIRING_SOON_THRESHOLD_DAYS,
 } from '~/composables/usePantry';
@@ -91,5 +92,36 @@ describe('groupPantryItemsByCategory', () => {
 
         expect(grouped[ProductCategoryEnum.zuivel]).toHaveLength(2);
         expect(grouped[ProductCategoryEnum.rijst]).toHaveLength(1);
+    });
+});
+
+describe('buildStockItems', () => {
+    it('keeps an item that is past its shelf life instead of hiding it', () => {
+        const items = buildStockItems(
+            [{
+                name: 'AH MELK LV',
+                quantity: 1,
+                price: 1.29,
+                category: ProductCategoryEnum.zuivel,
+                purchaseDate: '2026-07-01T10:00:00.000Z',
+            }],
+            new Date('2026-08-09T10:00:00.000Z'),
+        );
+        expect(items).toHaveLength(1);
+        expect(items[0].daysRemaining).toBeLessThan(0);
+    });
+
+    it('reports what is still fresh', () => {
+        const items = buildStockItems(
+            [{
+                name: 'AH BANANEN',
+                quantity: 1,
+                price: 1.49,
+                category: ProductCategoryEnum.fruit,
+                purchaseDate: '2026-08-08T10:00:00.000Z',
+            }],
+            new Date('2026-08-09T10:00:00.000Z'),
+        );
+        expect(items[0].expiringSoon).toBe(false);
     });
 });
