@@ -1,3 +1,4 @@
+import type DietTagEnum from '~/types/DietTagEnum';
 import type RecipeInterface from '~/types/RecipeInterface';
 import type WeekPlanInterface from '~/types/WeekPlanInterface';
 import MealSlotEnum from '~/types/MealSlotEnum';
@@ -56,6 +57,25 @@ export function buildWeekPlan(
     return plan;
 }
 
+/** A recipe satisfies a restriction like "vegetarian" only if it carries that tag itself. */
+export function matchesDietaryRestrictions(
+    recipe: RecipeInterface,
+    excludedDietaryTags: DietTagEnum[],
+): boolean {
+    const recipeTags = recipe.dietaryTags ?? [];
+    return excludedDietaryTags.every((tag) => recipeTags.includes(tag));
+}
+
+export function excludeByDietaryTags(
+    recipes: RecipeInterface[],
+    excludedDietaryTags: DietTagEnum[],
+): RecipeInterface[] {
+    if (excludedDietaryTags.length === 0) {
+        return recipes;
+    }
+    return recipes.filter((recipe) => matchesDietaryRestrictions(recipe, excludedDietaryTags));
+}
+
 export function pickRandom<T>(items: T[], count: number, random: () => number): T[] {
     const pool = [...items];
     const picked: T[] = [];
@@ -67,5 +87,14 @@ export function pickRandom<T>(items: T[], count: number, random: () => number): 
 }
 
 export function useWeekPlan() {
-    return { buildWeekPlan, daysPerRecipe, pickRandom, recipesNeeded, servingsFor, servingsPerDay };
+    return {
+        buildWeekPlan,
+        daysPerRecipe,
+        excludeByDietaryTags,
+        matchesDietaryRestrictions,
+        pickRandom,
+        recipesNeeded,
+        servingsFor,
+        servingsPerDay,
+    };
 }

@@ -1,7 +1,9 @@
+import { excludeByDietaryTags } from '~/composables/useWeekPlan';
 import { normalizeProductName } from '~/composables/useReceiptParser';
 import { shelfLifeDaysFor } from '~/data/shelfLifeDays';
 import type RecipeInterface from '~/types/RecipeInterface';
 import type DatedReceiptItemInterface from '~/types/DatedReceiptItemInterface';
+import type DietTagEnum from '~/types/DietTagEnum';
 import type ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 interface RecipeScoreInterface {
@@ -63,12 +65,13 @@ export function rankRecipes(
     recipes: RecipeInterface[],
     items: DatedReceiptItemInterface[],
     now: Date = new Date(),
+    excludedDietaryTags: DietTagEnum[] = [],
 ): RecipeScoreInterface[] {
     const freshItems = filterFreshItems(items, now);
     const purchasedNames = new Set(freshItems.map((i) => normalizeProductName(i.name)));
     const purchasedCategories = new Set(freshItems.map((i) => i.category));
 
-    return recipes
+    return excludeByDietaryTags(recipes, excludedDietaryTags)
         .map((recipe) => scoreRecipe(recipe, purchasedNames, purchasedCategories))
         .filter((scored) => scored.score > 0)
         .sort((a, b) => b.score - a.score);

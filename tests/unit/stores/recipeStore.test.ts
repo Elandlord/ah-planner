@@ -6,6 +6,7 @@ import type RecipeInterface from '~/types/RecipeInterface';
 import type RecipeIngredientInterface from '~/types/RecipeIngredientInterface';
 import type ReceiptInterface from '~/types/ReceiptInterface';
 import type ReceiptItemInterface from '~/types/ReceiptItemInterface';
+import DietTagEnum from '~/types/DietTagEnum';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 import MealSlotEnum from '~/types/MealSlotEnum';
 
@@ -246,6 +247,62 @@ describe('recipeStore', () => {
 
             // #then
             expect(suggested).toEqual([]);
+        });
+
+        it('excludes recipes that miss a dietary tag the household requires', () => {
+            // #given
+            const store = useRecipeStore();
+            store.allRecipes = [
+                makeRecipe({
+                    id: 'meaty',
+                    ingredients: [makeIngredient({ name: 'melk' })],
+                }),
+                makeRecipe({
+                    id: 'veggie',
+                    ingredients: [makeIngredient({ name: 'melk' })],
+                    dietaryTags: [DietTagEnum.vegetarian],
+                }),
+            ];
+            seedPurchasedItems([makeItem({ name: 'melk' })]);
+            store.setExcludedDietaryTags([DietTagEnum.vegetarian]);
+
+            // #when
+            const suggested = store.suggestedRecipes;
+
+            // #then
+            expect(suggested.map((recipe) => recipe.id)).toEqual(['veggie']);
+        });
+    });
+
+    describe('setExcludedDietaryTags', () => {
+        it('persists the household dietary restrictions', () => {
+            // #given
+            const store = useRecipeStore();
+
+            // #when
+            store.setExcludedDietaryTags([DietTagEnum.vegetarian, DietTagEnum.vegan]);
+
+            // #then
+            expect(store.household.excludedDietaryTags).toEqual([
+                DietTagEnum.vegetarian,
+                DietTagEnum.vegan,
+            ]);
+        });
+
+        it('keeps the household size when restrictions change', () => {
+            // #given
+            const store = useRecipeStore();
+            store.setHousehold(3, 2);
+
+            // #when
+            store.setExcludedDietaryTags([DietTagEnum.glutenFree]);
+
+            // #then
+            expect(store.household).toEqual({
+                adults: 3,
+                children: 2,
+                excludedDietaryTags: [DietTagEnum.glutenFree],
+            });
         });
     });
 

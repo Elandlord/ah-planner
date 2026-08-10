@@ -3,6 +3,7 @@ import { scoreRecipe, rankRecipes, filterFreshItems } from '~/composables/useRec
 import { normalizeProductName } from '~/composables/useReceiptParser';
 import type RecipeInterface from '~/types/RecipeInterface';
 import type DatedReceiptItemInterface from '~/types/DatedReceiptItemInterface';
+import DietTagEnum from '~/types/DietTagEnum';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 const MOCK_RECIPE: RecipeInterface = {
@@ -196,6 +197,23 @@ describe('rankRecipes', () => {
         const ranked = rankRecipes([MOCK_RECIPE, MOCK_RECIPE_2], items, NOW);
 
         expect(ranked.every((r) => r.score > 0)).toBe(true);
+    });
+
+    it('excludes recipes that do not carry the required dietary tags', () => {
+        const veggieRecipe: RecipeInterface = {
+            ...MOCK_RECIPE_2,
+            id: 'veggie-recipe',
+            dietaryTags: [DietTagEnum.vegetarian],
+        };
+
+        const ranked = rankRecipes(
+            [MOCK_RECIPE, veggieRecipe],
+            MOCK_ITEMS,
+            NOW,
+            [DietTagEnum.vegetarian],
+        );
+
+        expect(ranked.map((r) => r.recipe.id)).not.toContain('test-recipe');
     });
 
     it('returns empty array for no items', () => {

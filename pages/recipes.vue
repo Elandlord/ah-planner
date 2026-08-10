@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import type RecipeInterface from '~/types/RecipeInterface';
 import MealSlotEnum from '~/types/MealSlotEnum';
+import DietTagEnum from '~/types/DietTagEnum';
 import { useRecipeStore } from '~/stores/recipeStore';
 import { filterRecipes, recipeCategories } from '~/composables/useRecipeFilters';
-import { buildWeekPlan, pickRandom, recipesNeeded } from '~/composables/useWeekPlan';
+import { buildWeekPlan, excludeByDietaryTags, pickRandom, recipesNeeded } from '~/composables/useWeekPlan';
 import { sortByBonus, useRecipeBonus } from '~/composables/useRecipeBonus';
 import { useToast } from '~/composables/useToast';
+
+const DIETARY_TAG_OPTIONS: { tag: DietTagEnum; label: string }[] = [
+    { tag: DietTagEnum.vegetarian, label: 'Vegetarisch' },
+    { tag: DietTagEnum.vegan, label: 'Veganistisch' },
+    { tag: DietTagEnum.glutenFree, label: 'Glutenvrij' },
+    { tag: DietTagEnum.lactoseFree, label: 'Lactosevrij' },
+];
 
 const DAYS = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
 const MEAL_SLOTS: { key: MealSlotEnum; label: string }[] = [
@@ -36,13 +44,29 @@ const search = ref('');
 const openRecipeId = ref<string | null>(null);
 const draggedSlot = ref<{ day: string; slot: MealSlotEnum } | null>(null);
 
+function byDietaryTags(recipes: RecipeInterface[]): RecipeInterface[] {
+    return excludeByDietaryTags(recipes, recipeStore.household.excludedDietaryTags);
+}
+
+function toggleDietaryTag(tag: DietTagEnum): void {
+    const current = recipeStore.household.excludedDietaryTags;
+    const next = current.includes(tag)
+        ? current.filter((t) => t !== tag)
+        : [...current, tag];
+    recipeStore.setExcludedDietaryTags(next);
+}
+
 /** A recipe whose ingredients are in the bonus this week is worth cooking first. */
 const suggested = computed(() => sortByBonus(
-    filterRecipes(recipeStore.suggestedRecipes, category.value, search.value),
+    byDietaryTags(filterRecipes(recipeStore.suggestedRecipes, category.value, search.value)),
     bonusByRecipe.value,
 ));
-const all = computed(() => filterRecipes(recipeStore.availableRecipes, category.value, search.value));
-const saved = computed(() => filterRecipes(recipeStore.savedRecipes, category.value, search.value));
+const all = computed(() => byDietaryTags(
+    filterRecipes(recipeStore.availableRecipes, category.value, search.value),
+));
+const saved = computed(() => byDietaryTags(
+    filterRecipes(recipeStore.savedRecipes, category.value, search.value),
+));
 
 function planRecipe(recipeId: string, days: string[]): void {
     recipeStore.assignToDays(days, recipeId);
@@ -64,9 +88,11 @@ const runLength = ref(2);
 
 function randomiseWeek(): void {
     const needed = recipesNeeded(DAYS.length, runLength.value);
-    const base = recipeStore.savedRecipes.length >= needed
-        ? recipeStore.savedRecipes
-        : recipeStore.availableRecipes;
+    const base = byDietaryTags(
+        recipeStore.savedRecipes.length >= needed
+            ? recipeStore.savedRecipes
+            : recipeStore.availableRecipes,
+    );
     const withBonus = base.filter((candidate) => (bonusByRecipe.value.get(candidate.id) ?? 0) > 0);
     const pool = withBonus.length >= needed ? withBonus : base;
     const picked = pickRandom(pool, needed, Math.random);
@@ -162,6 +188,17 @@ function saveRecipe(recipe: Omit<RecipeInterface, 'id'>): void {
                     @click="category = option"
                 >
                     {{ option }}
+                </button>
+            </div>
+            <div class="categories">
+                <button
+                    v-for="option in DIETARY_TAG_OPTIONS"
+                    :key="option.tag"
+                    class="category"
+                    :class="{ 'category--active': recipeStore.household.excludedDietaryTags.includes(option.tag) }"
+                    @click="toggleDietaryTag(option.tag)"
+                >
+                    {{ option.label }}
                 </button>
             </div>
         </div>

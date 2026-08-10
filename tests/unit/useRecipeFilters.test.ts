@@ -39,6 +39,10 @@ describe('categoriesFor', () => {
             expect.arrayContaining(['Pasta', 'Ovenschotel']),
         );
     });
+
+    it('matches a category regardless of tag casing', () => {
+        expect(categoriesFor(recipe('Kikkererwtencurry', ['Vega']))).toContain('Vega');
+    });
 });
 
 describe('matchesSearch', () => {
@@ -56,6 +60,10 @@ describe('matchesSearch', () => {
 
     it('rejects what does not match', () => {
         expect(matchesSearch(recipe('Erwtensoep', ['soep']), 'tiramisu')).toBe(false);
+    });
+
+    it('finds a recipe by tag regardless of casing', () => {
+        expect(matchesSearch(recipe('Kikkererwtencurry', ['Vega']), 'vega')).toBe(true);
     });
 });
 
