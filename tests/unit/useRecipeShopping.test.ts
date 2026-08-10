@@ -83,6 +83,26 @@ describe('scaleAmount', () => {
     it('leaves an ingredient without a number untouched', () => {
         expect(scaleAmount(GNOCCHI.ingredients[2], 3)).toBe('naar smaak');
     });
+
+    it('never rounds a single stuk down to zero', () => {
+        expect(scaleAmount({
+            name: 'ui',
+            amount: '1 stuk',
+            category: ProductCategoryEnum.groente,
+            quantity: 1,
+            unit: 'stuk',
+        }, 0.25)).not.toBe('0 stuk');
+    });
+
+    it('never rounds a single teen down to zero', () => {
+        expect(scaleAmount({
+            name: 'knoflook',
+            amount: '1 teen',
+            category: ProductCategoryEnum.groente,
+            quantity: 1,
+            unit: 'teen',
+        }, 0.25)).not.toBe('0 teen');
+    });
 });
 
 describe('scalePacks', () => {
