@@ -1,9 +1,16 @@
 import { defineStore } from 'pinia';
 import type RecipeInterface from '~/types/RecipeInterface';
 import type WeekPlanInterface from '~/types/WeekPlanInterface';
+import type DietTagEnum from '~/types/DietTagEnum';
 import { rankRecipes } from '~/composables/useRecipeMatch';
 import { useReceiptStore } from '~/stores/receiptStore';
 import { recipes } from '~/data/recipes';
+
+interface HouseholdStateInterface {
+    adults: number;
+    children: number;
+    excludedDietaryTags: DietTagEnum[];
+}
 
 const USER_RECIPE_ID_PREFIX = 'user-';
 const WEEK_PLAN_KEY = 'ah-planner-week-plan';
@@ -70,9 +77,9 @@ export const useRecipeStore = defineStore('recipe', {
         allRecipes: recipes as RecipeInterface[],
         userRecipes: parseStored<RecipeInterface[]>('ah-planner-user-recipes', []),
         importedRecipes: parseStored<RecipeInterface[]>('ah-planner-imported-recipes', []),
-        household: parseStored<{ adults: number; children: number }>(
+        household: parseStored<HouseholdStateInterface>(
             'ah-planner-household',
-            { adults: 2, children: 1 },
+            { adults: 2, children: 1, excludedDietaryTags: [] },
         ),
         savedRecipeIds: parseStored<string[]>('ah-planner-saved-recipes', []),
         weekPlans: parseWeekPlans(WEEK_PLAN_KEY),
@@ -92,9 +99,12 @@ export const useRecipeStore = defineStore('recipe', {
 
         suggestedRecipes(): RecipeInterface[] {
             const receiptStore = useReceiptStore();
-            return rankRecipes(this.availableRecipes, receiptStore.itemsWithPurchaseDate).map(
-                (s) => s.recipe,
-            );
+            return rankRecipes(
+                this.availableRecipes,
+                receiptStore.itemsWithPurchaseDate,
+                new Date(),
+                this.household.excludedDietaryTags,
+            ).map((s) => s.recipe);
         },
 
         weekPlan(state): WeekPlanInterface {
@@ -211,7 +221,16 @@ export const useRecipeStore = defineStore('recipe', {
         },
 
         setHousehold(adults: number, children: number): void {
-            this.household = { adults: Math.max(0, adults), children: Math.max(0, children) };
+            this.household = {
+                ...this.household,
+                adults: Math.max(0, adults),
+                children: Math.max(0, children),
+            };
+            localStorage.setItem('ah-planner-household', JSON.stringify(this.household));
+        },
+
+        setExcludedDietaryTags(excludedDietaryTags: DietTagEnum[]): void {
+            this.household = { ...this.household, excludedDietaryTags };
             localStorage.setItem('ah-planner-household', JSON.stringify(this.household));
         },
 

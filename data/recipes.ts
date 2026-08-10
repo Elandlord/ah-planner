@@ -1,4 +1,5 @@
 import type RecipeInterface from '~/types/RecipeInterface';
+import DietTagEnum from '~/types/DietTagEnum';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 
 export const recipes: RecipeInterface[] = [
@@ -209,6 +210,7 @@ export const recipes: RecipeInterface[] = [
             'Kook aardappelen en serveer alles samen.',
         ],
         tags: ['klassiek', 'vegetarisch', 'doordeweeks'],
+        dietaryTags: [DietTagEnum.vegetarian],
     },
     {
         id: 'tomatensoep',
@@ -325,6 +327,7 @@ export const recipes: RecipeInterface[] = [
             'Breng op smaak met peper en zout.',
         ],
         tags: ['soep', 'vegetarisch', 'doordeweeks'],
+        dietaryTags: [DietTagEnum.vegetarian],
     },
     {
         id: 'wraps-kip',
@@ -683,6 +686,7 @@ export const recipes: RecipeInterface[] = [
             'Serveer curry met rijst.',
         ],
         tags: ['curry', 'vegetarisch', 'doordeweeks'],
+        dietaryTags: [DietTagEnum.vegetarian],
     },
     {
         id: 'pizza-zelfgemaakt',
@@ -727,6 +731,7 @@ export const recipes: RecipeInterface[] = [
             'Meng alles en verkruimel feta erover.',
         ],
         tags: ['vegetarisch', 'snel', 'zomer'],
+        dietaryTags: [DietTagEnum.vegetarian],
     },
     {
         id: 'witlofschotel',
@@ -793,6 +798,7 @@ export const recipes: RecipeInterface[] = [
             'Voeg champignons en parmezaan toe.',
         ],
         tags: ['rijst', 'italiaans', 'vegetarisch'],
+        dietaryTags: [DietTagEnum.vegetarian],
     },
     {
         id: 'frittata-groenten',
@@ -815,6 +821,7 @@ export const recipes: RecipeInterface[] = [
             'Zet 10 minuten in de oven op 180°C.',
         ],
         tags: ['vegetarisch', 'snel', 'italiaans'],
+        dietaryTags: [DietTagEnum.vegetarian],
     },
     {
         id: 'zalm-spinazie',
@@ -900,6 +907,7 @@ export const recipes: RecipeInterface[] = [
             'Serveer op brood.',
         ],
         tags: ['lunch', 'snel', 'vegetarisch'],
+        dietaryTags: [DietTagEnum.vegetarian],
     },
     {
         id: 'ovenschotel-groenten',
@@ -922,6 +930,7 @@ export const recipes: RecipeInterface[] = [
             'Serveer met gekookte aardappelen.',
         ],
         tags: ['oven', 'vegetarisch', 'mediterraan'],
+        dietaryTags: [DietTagEnum.vegetarian],
     },
     {
         id: 'gehaktbrood',
@@ -990,6 +999,7 @@ export const recipes: RecipeInterface[] = [
             'Serveer met brood.',
         ],
         tags: ['soep', 'vegetarisch', 'gezond'],
+        dietaryTags: [DietTagEnum.vegetarian],
     },
     {
         id: 'biefstuk-friet',
@@ -1032,6 +1042,7 @@ export const recipes: RecipeInterface[] = [
             'Serveer soep met kaas crouton.',
         ],
         tags: ['soep', 'frans', 'vegetarisch'],
+        dietaryTags: [DietTagEnum.vegetarian],
     },
     {
         id: 'gyros-schotel',
@@ -1075,6 +1086,7 @@ export const recipes: RecipeInterface[] = [
             'Serveer met geroosterde pompoenpitten.',
         ],
         tags: ['soep', 'herfst', 'vegetarisch'],
+        dietaryTags: [DietTagEnum.vegetarian],
     },
     {
         id: 'zalm-tortilla-wrap',
