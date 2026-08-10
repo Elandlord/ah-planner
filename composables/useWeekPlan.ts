@@ -1,5 +1,7 @@
 import type DietTagEnum from '~/types/DietTagEnum';
 import type RecipeInterface from '~/types/RecipeInterface';
+import type WeekPlanInterface from '~/types/WeekPlanInterface';
+import MealSlotEnum from '~/types/MealSlotEnum';
 
 const DEFAULT_RUN_LENGTH = 2;
 
@@ -16,10 +18,15 @@ export function servingsFor(days: number, household: HouseholdInterface): number
     return Math.max(1, days) * servingsPerDay(household);
 }
 
-export function daysPerRecipe(weekPlan: Record<string, string>): Map<string, string[]> {
+export function daysPerRecipe(weekPlan: WeekPlanInterface): Map<string, string[]> {
     const days = new Map<string, string[]>();
-    for (const [day, recipeId] of Object.entries(weekPlan)) {
-        days.set(recipeId, [...(days.get(recipeId) ?? []), day]);
+    for (const [day, meals] of Object.entries(weekPlan)) {
+        for (const recipeId of Object.values(meals)) {
+            if (!recipeId) {
+                continue;
+            }
+            days.set(recipeId, [...(days.get(recipeId) ?? []), day]);
+        }
     }
     return days;
 }
@@ -30,22 +37,22 @@ export function recipesNeeded(dayCount: number, runLength = DEFAULT_RUN_LENGTH):
 }
 
 /**
- * Fills the week by giving each recipe a run of consecutive days, so leftovers land
- * on the day after they were cooked.
+ * Fills the week's dinner slot by giving each recipe a run of consecutive days, so leftovers
+ * land on the day after they were cooked.
  */
 export function buildWeekPlan(
     days: string[],
     recipes: RecipeInterface[],
     runLength = DEFAULT_RUN_LENGTH,
-): Record<string, string> {
-    const plan: Record<string, string> = {};
+): WeekPlanInterface {
+    const plan: WeekPlanInterface = {};
     if (recipes.length === 0) {
         return plan;
     }
     const size = Math.max(1, runLength);
     days.forEach((day, index) => {
         const recipe = recipes[Math.floor(index / size) % recipes.length];
-        plan[day] = recipe.id;
+        plan[day] = { [MealSlotEnum.dinner]: recipe.id };
     });
     return plan;
 }

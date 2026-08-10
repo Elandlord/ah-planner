@@ -12,6 +12,7 @@ import type RecipeInterface from '~/types/RecipeInterface';
 import type ShoppingListItemInterface from '~/types/ShoppingListItemInterface';
 import type BackupInterface from '~/types/BackupInterface';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
+import MealSlotEnum from '~/types/MealSlotEnum';
 
 const { downloadFileMock } = vi.hoisted(() => ({
     downloadFileMock: vi.fn(),
@@ -93,7 +94,7 @@ function makeBackup(overrides: Partial<BackupInterface> = {}): BackupInterface {
         exportedAt: '2026-01-10T00:00:00.000Z',
         receipts: [makeReceipt()],
         savedRecipeIds: ['recipe-1'],
-        weekPlans: { '2026-01-05': { woensdag: 'recipe-1' } },
+        weekPlans: { '2026-01-05': { woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } } },
         shoppingList: [makeListItem()],
         userRecipes: [makeRecipe()],
         categoryOverrides: makeCategoryOverrides(),
@@ -118,7 +119,9 @@ describe('useDataBackup', () => {
             const recipeStore = useRecipeStore();
             useReceiptStore().receipts = [makeReceipt()];
             recipeStore.savedRecipeIds = ['recipe-1'];
-            recipeStore.weekPlans[recipeStore.currentWeekStart] = { woensdag: 'recipe-1' };
+            recipeStore.weekPlans[recipeStore.currentWeekStart] = {
+                woensdag: { [MealSlotEnum.dinner]: 'recipe-1' },
+            };
             recipeStore.userRecipes = [makeRecipe()];
             useShoppingListStore().items = [makeListItem()];
             useCategoryOverrideStore().overrides = makeCategoryOverrides();
@@ -136,7 +139,9 @@ describe('useDataBackup', () => {
                 exportedAt: parsed.exportedAt,
                 receipts: [makeReceipt()],
                 savedRecipeIds: ['recipe-1'],
-                weekPlans: { [recipeStore.currentWeekStart]: { woensdag: 'recipe-1' } },
+                weekPlans: {
+                    [recipeStore.currentWeekStart]: { woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } },
+                },
                 shoppingList: [makeListItem()],
                 userRecipes: [makeRecipe()],
                 categoryOverrides: makeCategoryOverrides(),
@@ -180,7 +185,7 @@ describe('useDataBackup', () => {
             // #then
             const recipeStore = useRecipeStore();
             expect(recipeStore.weekPlans).toEqual({
-                [recipeStore.currentWeekStart]: { woensdag: 'recipe-1' },
+                [recipeStore.currentWeekStart]: { woensdag: { [MealSlotEnum.dinner]: 'recipe-1' } },
             });
         });
 
