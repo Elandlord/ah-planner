@@ -18,8 +18,9 @@ const CATEGORY_TAGS: Record<string, string[]> = {
 export const recipeCategories = ['Alles', 'Snel', ...Object.keys(CATEGORY_TAGS)];
 
 export function categoriesFor(recipe: RecipeInterface): string[] {
+    const recipeTags = recipe.tags.map((tag) => tag.toLowerCase());
     const found = Object.entries(CATEGORY_TAGS)
-        .filter(([, tags]) => tags.some((tag) => recipe.tags.includes(tag)))
+        .filter(([, tags]) => tags.some((tag) => recipeTags.includes(tag)))
         .map(([category]) => category);
     if (recipe.prepTimeMinutes <= QUICK_MINUTES) {
         found.push('Snel');
@@ -34,7 +35,7 @@ export function matchesSearch(recipe: RecipeInterface, term: string): boolean {
     }
     return recipe.name.toLowerCase().includes(needle)
         || recipe.description.toLowerCase().includes(needle)
-        || recipe.tags.some((tag) => tag.includes(needle))
+        || recipe.tags.some((tag) => tag.toLowerCase().includes(needle))
         || recipe.ingredients.some((ingredient) => ingredient.name.toLowerCase().includes(needle));
 }
 
