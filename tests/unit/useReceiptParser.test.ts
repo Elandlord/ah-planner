@@ -79,7 +79,7 @@ describe('parseReceiptText', () => {
 
         expect(bananen).toBeDefined();
         expect(bananen?.quantity).toBe(2);
-        expect(bananen?.price).toBe(2.38);
+        expect(bananen?.price).toBe(1.19);
     });
 
     it('categorizes products correctly', () => {

@@ -191,10 +191,11 @@ export function parseReceiptText(
 
         const qtyMatch = line.match(quantityPricePattern);
         if (qtyMatch) {
+            const quantity = parseInt(qtyMatch[1], 10);
             items.push({
                 name: qtyMatch[2].trim(),
-                quantity: parseInt(qtyMatch[1], 10),
-                price: parsePrice(qtyMatch[3]),
+                quantity,
+                price: parsePrice(qtyMatch[3]) / quantity,
                 category: categorizeProduct(qtyMatch[2], overrides),
             });
             continue;
