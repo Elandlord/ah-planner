@@ -66,7 +66,9 @@ export function scaleAmount(ingredient: RecipeIngredientInterface, factor: numbe
     }
     const scaled = parsed.quantity * factor;
     const unit = parsed.unit;
-    const rounded = WHOLE_UNITS.includes(unit) ? Math.ceil(scaled) : Math.round(scaled);
+    const rounded = WHOLE_UNITS.includes(unit) || (scaled > 0 && scaled < 1)
+        ? Math.ceil(scaled)
+        : Math.round(scaled);
     return `${rounded} ${unit}`.trim();
 }
 
