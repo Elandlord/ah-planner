@@ -2,17 +2,20 @@ import { describe, expect, it } from 'vitest';
 import {
     buildWeekPlan,
     daysPerRecipe,
+    excludeByDietaryTags,
+    matchesDietaryRestrictions,
     pickRandom,
     recipesNeeded,
     servingsFor,
     servingsPerDay,
 } from '~/composables/useWeekPlan';
+import DietTagEnum from '~/types/DietTagEnum';
 import ProductCategoryEnum from '~/types/ProductCategoryEnum';
 import type RecipeInterface from '~/types/RecipeInterface';
 
 const DAYS = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
 
-function recipe(id: string): RecipeInterface {
+function recipe(id: string, dietaryTags: DietTagEnum[] = []): RecipeInterface {
     return {
         id,
         name: id,
@@ -22,6 +25,7 @@ function recipe(id: string): RecipeInterface {
         ingredients: [{ name: 'gnocchi', amount: '400 g', category: ProductCategoryEnum.pasta }],
         instructions: [],
         tags: [],
+        dietaryTags,
     };
 }
 
@@ -91,5 +95,37 @@ describe('pickRandom', () => {
 
     it('stops when the pool runs out', () => {
         expect(pickRandom(['a'], 4, () => 0)).toEqual(['a']);
+    });
+});
+
+describe('matchesDietaryRestrictions', () => {
+    it('matches a recipe carrying every required tag', () => {
+        const veggie = recipe('a', [DietTagEnum.vegetarian]);
+        expect(matchesDietaryRestrictions(veggie, [DietTagEnum.vegetarian])).toBe(true);
+    });
+
+    it('rejects a recipe missing a required tag', () => {
+        const meaty = recipe('a');
+        expect(matchesDietaryRestrictions(meaty, [DietTagEnum.vegetarian])).toBe(false);
+    });
+
+    it('matches anything when no restrictions are set', () => {
+        expect(matchesDietaryRestrictions(recipe('a'), [])).toBe(true);
+    });
+});
+
+describe('excludeByDietaryTags', () => {
+    it('drops the stamppot with spek from a vegetarian household', () => {
+        const stamppot = recipe('stamppot');
+        const veggieStew = recipe('veggie-stew', [DietTagEnum.vegetarian]);
+
+        const filtered = excludeByDietaryTags([stamppot, veggieStew], [DietTagEnum.vegetarian]);
+
+        expect(filtered).toEqual([veggieStew]);
+    });
+
+    it('returns every recipe unchanged when nothing is restricted', () => {
+        const recipes = [recipe('a'), recipe('b', [DietTagEnum.vegan])];
+        expect(excludeByDietaryTags(recipes, [])).toEqual(recipes);
     });
 });

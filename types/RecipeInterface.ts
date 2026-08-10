@@ -1,3 +1,4 @@
+import type DietTagEnum from '~/types/DietTagEnum';
 import type RecipeIngredientInterface from '~/types/RecipeIngredientInterface';
 
 interface RecipeInterface {
@@ -9,6 +10,7 @@ interface RecipeInterface {
     ingredients: RecipeIngredientInterface[];
     instructions: string[];
     tags: string[];
+    dietaryTags?: DietTagEnum[];
     imageUrl?: string;
 }
 
