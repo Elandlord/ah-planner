@@ -58,7 +58,7 @@ watch(() => startOpen, (open) => {
                 :class="{ 'save-btn--saved': isSaved }"
                 @click="emit('toggleSave')"
             >
-                {{ isSaved ? '&#9829;' : '&#9825;' }}
+                {{ isSaved ? '♥' : '♡' }}
             </button>
         </div>
 

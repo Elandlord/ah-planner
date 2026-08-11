@@ -68,6 +68,7 @@ describe('RecipeCard', () => {
 
             // #then
             expect(wrapper.find('.save-btn').classes()).toContain('save-btn--saved');
+            expect(wrapper.find('.save-btn').text()).toBe('♥');
         });
 
         it('does not apply the save-btn--saved class when isSaved is false', () => {
@@ -78,6 +79,7 @@ describe('RecipeCard', () => {
 
             // #then
             expect(wrapper.find('.save-btn').classes()).not.toContain('save-btn--saved');
+            expect(wrapper.find('.save-btn').text()).toBe('♡');
         });
     });
 
