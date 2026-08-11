@@ -32,8 +32,9 @@ export const useReceiptStore = defineStore('receipt', {
     getters: {
         receiptCount: (state): number => state.receipts.length,
 
-        totalSpent: (state): number =>
-            state.receipts.reduce((sum, receipt) => sum + receipt.total, 0),
+        totalSpent(): number {
+            return this.allItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        },
 
         averagePerReceipt(): number {
             if (this.receiptCount === 0) {

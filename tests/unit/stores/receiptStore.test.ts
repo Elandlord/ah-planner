@@ -186,18 +186,25 @@ describe('receiptStore', () => {
     });
 
     describe('totalSpent', () => {
-        it('sums the totals of every receipt', () => {
+        it('sums price times quantity across every item, ignoring the receipt total field', () => {
             // #given
             const store = useReceiptStore();
 
             // #when
             store.receipts = [
-                makeReceipt({ total: 10 }),
-                makeReceipt({ id: 'receipt-2', total: 5.5 }),
+                makeReceipt({
+                    total: 999,
+                    items: [makeItem({ price: 2, quantity: 3 })],
+                }),
+                makeReceipt({
+                    id: 'receipt-2',
+                    total: 999,
+                    items: [makeItem({ price: 1, quantity: 2 })],
+                }),
             ];
 
             // #then
-            expect(store.totalSpent).toBe(15.5);
+            expect(store.totalSpent).toBe(8);
         });
     });
 
@@ -208,8 +215,8 @@ describe('receiptStore', () => {
 
             // #when
             store.receipts = [
-                makeReceipt({ total: 10 }),
-                makeReceipt({ id: 'receipt-2', total: 20 }),
+                makeReceipt({ items: [makeItem({ price: 10, quantity: 1 })] }),
+                makeReceipt({ id: 'receipt-2', items: [makeItem({ price: 20, quantity: 1 })] }),
             ];
 
             // #then
