@@ -58,7 +58,9 @@ describe('recipesNeeded', () => {
 
 describe('buildWeekPlan', () => {
     it('gives each recipe two days in a row', () => {
-        const plan = buildWeekPlan(DAYS, [recipe('a'), recipe('b'), recipe('c'), recipe('d')], 2);
+        const plan = buildWeekPlan(DAYS, [
+            { slot: MealSlotEnum.dinner, recipes: [recipe('a'), recipe('b'), recipe('c'), recipe('d')], runLength: 2 },
+        ]);
         expect(plan).toEqual({
             Maandag: { [MealSlotEnum.dinner]: 'a' },
             Dinsdag: { [MealSlotEnum.dinner]: 'a' },
@@ -71,12 +73,31 @@ describe('buildWeekPlan', () => {
     });
 
     it('wraps around when there are fewer recipes than runs', () => {
-        const plan = buildWeekPlan(DAYS, [recipe('a'), recipe('b')], 2);
+        const plan = buildWeekPlan(DAYS, [
+            { slot: MealSlotEnum.dinner, recipes: [recipe('a'), recipe('b')], runLength: 2 },
+        ]);
         expect(plan.Zaterdag[MealSlotEnum.dinner]).toBe('a');
     });
 
     it('returns nothing without recipes', () => {
-        expect(buildWeekPlan(DAYS, [], 2)).toEqual({});
+        expect(buildWeekPlan(DAYS, [{ slot: MealSlotEnum.dinner, recipes: [], runLength: 2 }])).toEqual({});
+    });
+
+    it('fills both dinner and lunch from their own pools without colliding', () => {
+        const plan = buildWeekPlan(DAYS, [
+            { slot: MealSlotEnum.dinner, recipes: [recipe('a'), recipe('b')], runLength: 2 },
+            { slot: MealSlotEnum.lunch, recipes: [recipe('x'), recipe('y')], runLength: 2 },
+        ]);
+        expect(plan.Maandag).toEqual({ [MealSlotEnum.dinner]: 'a', [MealSlotEnum.lunch]: 'x' });
+        expect(plan.Woensdag).toEqual({ [MealSlotEnum.dinner]: 'b', [MealSlotEnum.lunch]: 'y' });
+    });
+
+    it('leaves the lunch slot unset when its pool is empty, but still fills dinner', () => {
+        const plan = buildWeekPlan(DAYS, [
+            { slot: MealSlotEnum.dinner, recipes: [recipe('a')], runLength: 2 },
+            { slot: MealSlotEnum.lunch, recipes: [], runLength: 2 },
+        ]);
+        expect(plan.Maandag).toEqual({ [MealSlotEnum.dinner]: 'a' });
     });
 });
 

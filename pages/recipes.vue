@@ -4,6 +4,7 @@ import MealSlotEnum from '~/types/MealSlotEnum';
 import DietTagEnum from '~/types/DietTagEnum';
 import { useRecipeStore } from '~/stores/recipeStore';
 import { filterRecipes, recipeCategories } from '~/composables/useRecipeFilters';
+import type { WeekPlanSlotConfig } from '~/composables/useWeekPlan';
 import { buildWeekPlan, excludeByDietaryTags, pickRandom, recipesNeeded } from '~/composables/useWeekPlan';
 import { sortByBonus, useRecipeBonus } from '~/composables/useRecipeBonus';
 import { useToast } from '~/composables/useToast';
@@ -86,8 +87,7 @@ function openRecipe(recipeId: string): void {
 
 const runLength = ref(2);
 
-function randomiseWeek(): void {
-    const needed = recipesNeeded(DAYS.length, runLength.value);
+function pickForSlot(needed: number): RecipeInterface[] {
     const base = byDietaryTags(
         recipeStore.savedRecipes.length >= needed
             ? recipeStore.savedRecipes
@@ -95,13 +95,23 @@ function randomiseWeek(): void {
     );
     const withBonus = base.filter((candidate) => (bonusByRecipe.value.get(candidate.id) ?? 0) > 0);
     const pool = withBonus.length >= needed ? withBonus : base;
-    const picked = pickRandom(pool, needed, Math.random);
-    if (picked.length === 0) {
+    return pickRandom(pool, needed, Math.random);
+}
+
+function randomiseWeek(): void {
+    const needed = recipesNeeded(DAYS.length, runLength.value);
+    const dinnerPicked = pickForSlot(needed);
+    const lunchPicked = pickForSlot(needed);
+    if (dinnerPicked.length === 0 && lunchPicked.length === 0) {
         toast.error('Geen recepten om uit te kiezen.');
         return;
     }
-    recipeStore.replaceWeekPlan(buildWeekPlan(DAYS, picked, runLength.value));
-    toast.success(`Week gevuld met ${picked.length} recepten.`);
+    const slots: WeekPlanSlotConfig[] = [
+        { slot: MealSlotEnum.dinner, recipes: dinnerPicked, runLength: runLength.value },
+        { slot: MealSlotEnum.lunch, recipes: lunchPicked, runLength: runLength.value },
+    ];
+    recipeStore.replaceWeekPlan(buildWeekPlan(DAYS, slots));
+    toast.success(`Week gevuld met ${dinnerPicked.length + lunchPicked.length} recepten.`);
 }
 
 onMounted(() => loadBonusData(recipeStore.availableRecipes));
