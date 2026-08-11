@@ -36,24 +36,31 @@ export function recipesNeeded(dayCount: number, runLength = DEFAULT_RUN_LENGTH):
     return Math.ceil(dayCount / Math.max(1, runLength));
 }
 
+export interface WeekPlanSlotConfig {
+    slot: MealSlotEnum;
+    recipes: RecipeInterface[];
+    runLength?: number;
+}
+
 /**
- * Fills the week's dinner slot by giving each recipe a run of consecutive days, so leftovers
- * land on the day after they were cooked.
+ * Fills each meal slot by giving each recipe a run of consecutive days, so leftovers land on the
+ * day after they were cooked. A slot with an empty recipe pool is left unset rather than repeated.
  */
 export function buildWeekPlan(
     days: string[],
-    recipes: RecipeInterface[],
-    runLength = DEFAULT_RUN_LENGTH,
+    slots: WeekPlanSlotConfig[],
 ): WeekPlanInterface {
     const plan: WeekPlanInterface = {};
-    if (recipes.length === 0) {
-        return plan;
+    for (const { slot, recipes, runLength = DEFAULT_RUN_LENGTH } of slots) {
+        if (recipes.length === 0) {
+            continue;
+        }
+        const size = Math.max(1, runLength);
+        days.forEach((day, index) => {
+            const recipe = recipes[Math.floor(index / size) % recipes.length];
+            plan[day] = { ...plan[day], [slot]: recipe.id };
+        });
     }
-    const size = Math.max(1, runLength);
-    days.forEach((day, index) => {
-        const recipe = recipes[Math.floor(index / size) % recipes.length];
-        plan[day] = { [MealSlotEnum.dinner]: recipe.id };
-    });
     return plan;
 }
 
