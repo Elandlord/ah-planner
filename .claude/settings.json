@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "motion@ericlandheer": true,
+    "ui-craft@ericlandheer": true
+  }
+}
